@@ -64,49 +64,191 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ESP32 Dual-Mode Controller</title>
     <style>
-        body { text-align: center; font-family: sans-serif; padding: 20px; background: #f0f0f0; }
-        .box { background: white; padding: 20px; border-radius: 10px; display: inline-block; }
-        button { width: 100px; height: 100px; font-size: 18px; margin: 5px; cursor: pointer; border-radius: 8px; border: none; background: #333; color: white; }
-        button:active { background: #555; }
-        .mode-btn { width: 150px; height: 50px; background: #007bff; }
-        .control-panel { display: none; margin-top: 20px; }
-        #status { color: red; font-weight: bold; margin: 10px; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background-color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 420px;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 0 25px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            text-align: center;
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #111;
+            margin-bottom: 12px;
+        }
+
+        #status {
+            font-size: 15px;
+            font-weight: bold;
+            margin: 10px 0 25px;
+            color: #e53935;
+        }
+
+        /* Mode Buttons */
+        .mode-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            height: 50px;
+            border-radius: 10px;
+            border: none;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .ble-btn {
+            background: #000000;
+            color: white;
+        }
+
+        .wifi-btn {
+            background: #f2f2f2;
+            color: #666;
+            cursor: default;
+        }
+
+        .ble-btn:active {
+            background: #333;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .btn-grid {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .control-btn {
+            width: 75px;
+            height: 75px;
+            border-radius: 12px;
+            border: none;
+            background: #111;
+            color: white;
+            font-size: 22px;
+            cursor: pointer;
+            transition: 0.15s;
+            user-select: none;
+        }
+
+        .control-btn:active {
+            background: #555;
+            transform: scale(0.96);
+        }
+
+        .stop-btn {
+            background: #e53935 !important;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .stop-btn:active {
+            background: #c62828 !important;
+        }
+
+        /* WiFi Tip */
+        #wifi-tip {
+            display: none;
+            color: #444;
+            font-size: 14px;
+            margin: 15px 0;
+            line-height: 1.5;
+        }
     </style>
 </head>
+
 <body>
-    <div class="box">
-        <h1>Car Controller</h1>
+    <div class="container">
+        <h1 class="title">Smart Car Controller</h1>
         <div id="status">Disconnected</div>
 
-        <!-- Selection Panel -->
-        <div id="selection">
-            <button class="mode-btn" onclick="startBLE()">BLE (Android/PC)</button>
-            <button class="mode-btn" style="background:#28a745;" onclick="startWiFi()">Wi-Fi (iOS)</button>
+        <!-- Connection Mode -->
+        <div id="mode-select" class="mode-group">
+            <button class="mode-btn ble-btn" onclick="startBLE()">BLE (Bluetooth)</button>
+            <button class="mode-btn wifi-btn" onclick="showWifiTip()">Wi-Fi (Unsupported)</button>
         </div>
 
-        <!-- Wi-Fi Instructions -->
-        <div id="wifi-instr" style="display:none; color: blue;">
-            <p>1. Connect your iPhone Wi-Fi to: <b>CAR_WIFI</b></p>
-            <p>2. Once connected, buttons will send commands.</p>
+        <!-- WiFi Tip -->
+        <div id="wifi-tip">
+            Wi-Fi mode is currently <b>not supported</b> on iOS devices.<br>
+            Please use BLE mode to control the car.
         </div>
 
-        <!-- Control Panel -->
+        <!-- 7 Control Buttons -->
         <div id="controls" class="control-panel">
-            <button onclick="sendCmd('F')">▲</button><br>
-            <button onclick="sendCmd('L')">◀</button>
-            <button onclick="sendCmd('S')" style="background:#dc3545;">STOP</button>
-            <button onclick="sendCmd('R')">▶</button><br>
-            <button onclick="sendCmd('B')">▼</button>
+            <div class="btn-grid">
+                <div class="row">
+                    <button class="control-btn" onclick="sendCmd('F')">F</button>
+                </div>
+                <div class="row">
+                    <button class="control-btn" onclick="sendCmd('L')">L</button>
+                    <button class="control-btn stop-btn" onclick="sendCmd('S')">STOP</button>
+                    <button class="control-btn" onclick="sendCmd('R')">R</button>
+                </div>
+                <div class="row">
+                    <button class="control-btn" onclick="sendCmd('B')">B</button>
+                </div>
+                <div class="row">
+                    <button class="control-btn" onclick="sendCmd('A')">CCW</button>
+                    <button class="control-btn" onclick="sendCmd('C')">CW</button>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
         let characteristic;
-        let mode = ""; // "BLE" or "WIFI"
+        let mode = "";
 
-        // BLE logic
+        // Show WiFi Unsupported Tip
+        function showWifiTip() {
+            document.getElementById('wifi-tip').style.display = 'block';
+        }
+
+        // BLE Connection
         async function startBLE() {
-            if (!navigator.bluetooth) return alert("Bluetooth not supported in this browser. Use Chrome/Edge.");
+            if (!navigator.bluetooth) {
+                alert("Bluetooth is not supported in this browser. Use Chrome / Edge.");
+                return;
+            }
             try {
                 const device = await navigator.bluetooth.requestDevice({
                     filters: [{ name: 'CAR_CONTROL' }],
@@ -115,44 +257,33 @@
                 const server = await device.gatt.connect();
                 const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
                 characteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
-                
+
                 mode = "BLE";
                 document.getElementById('status').innerText = "Connected: BLE";
-                document.getElementById('status').style.color = "green";
-                document.getElementById('selection').style.display = 'none';
+                document.getElementById('status').style.color = "#2e7d32";
+                document.getElementById('mode-select').style.display = 'none';
+                document.getElementById('wifi-tip').style.display = 'none';
                 document.getElementById('controls').style.display = 'block';
-            } catch(e) { alert("BLE Failed: " + e); }
-        }
-
-        // Wi-Fi logic
-        function startWiFi() {
-            mode = "WIFI";
-            document.getElementById('status').innerText = "Connected: Wi-Fi (Manual)";
-            document.getElementById('status').style.color = "green";
-            document.getElementById('selection').style.display = 'none';
-            document.getElementById('wifi-instr').style.display = 'block';
-            document.getElementById('controls').style.display = 'block';
+            } catch (e) {
+                alert("BLE Connection Failed: " + e.message);
+            }
         }
 
         // Universal Command Sender
-        async function sendCmd(c) {
-            if (mode === "BLE") {
+        async function sendCmd(cmd) {
+            if (mode !== "BLE") {
+                alert("Please connect via BLE first!");
+                return;
+            }
+
+            try {
                 const encoder = new TextEncoder();
-                await characteristic.writeValue(encoder.encode(c));
-            } else if (mode === "WIFI") {
-                // The ESP32 WebServer is at 192.168.4.1
-                fetch(`http://192.168.4.1/cmd?c=${c}`).catch(e => console.log("Sent"));
-            } else {
-                alert("Please select a connection mode first!");
+                await characteristic.writeValue(encoder.encode(cmd));
+                console.log("Sent:", cmd);
+            } catch (e) {
+                console.log("Send failed:", e);
             }
         }
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
