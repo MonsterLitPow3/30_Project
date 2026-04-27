@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -52,12 +52,103 @@
         }
     </script>
 </body>
+</html> -->
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Dual-Mode Controller</title>
+    <style>
+        body { text-align: center; font-family: sans-serif; padding: 20px; background: #f0f0f0; }
+        .box { background: white; padding: 20px; border-radius: 10px; display: inline-block; }
+        button { width: 100px; height: 100px; font-size: 18px; margin: 5px; cursor: pointer; border-radius: 8px; border: none; background: #333; color: white; }
+        button:active { background: #555; }
+        .mode-btn { width: 150px; height: 50px; background: #007bff; }
+        .control-panel { display: none; margin-top: 20px; }
+        #status { color: red; font-weight: bold; margin: 10px; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>Car Controller</h1>
+        <div id="status">Disconnected</div>
+
+        <!-- Selection Panel -->
+        <div id="selection">
+            <button class="mode-btn" onclick="startBLE()">BLE (Android/PC)</button>
+            <button class="mode-btn" style="background:#28a745;" onclick="startWiFi()">Wi-Fi (iOS)</button>
+        </div>
+
+        <!-- Wi-Fi Instructions -->
+        <div id="wifi-instr" style="display:none; color: blue;">
+            <p>1. Connect your iPhone Wi-Fi to: <b>CAR_WIFI</b></p>
+            <p>2. Once connected, buttons will send commands.</p>
+        </div>
+
+        <!-- Control Panel -->
+        <div id="controls" class="control-panel">
+            <button onclick="sendCmd('F')">▲</button><br>
+            <button onclick="sendCmd('L')">◀</button>
+            <button onclick="sendCmd('S')" style="background:#dc3545;">STOP</button>
+            <button onclick="sendCmd('R')">▶</button><br>
+            <button onclick="sendCmd('B')">▼</button>
+        </div>
+    </div>
+
+    <script>
+        let characteristic;
+        let mode = ""; // "BLE" or "WIFI"
+
+        // BLE logic
+        async function startBLE() {
+            if (!navigator.bluetooth) return alert("Bluetooth not supported in this browser. Use Chrome/Edge.");
+            try {
+                const device = await navigator.bluetooth.requestDevice({
+                    filters: [{ name: 'CAR_CONTROL' }],
+                    optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb']
+                });
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
+                characteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+                
+                mode = "BLE";
+                document.getElementById('status').innerText = "Connected: BLE";
+                document.getElementById('status').style.color = "green";
+                document.getElementById('selection').style.display = 'none';
+                document.getElementById('controls').style.display = 'block';
+            } catch(e) { alert("BLE Failed: " + e); }
+        }
+
+        // Wi-Fi logic
+        function startWiFi() {
+            mode = "WIFI";
+            document.getElementById('status').innerText = "Connected: Wi-Fi (Manual)";
+            document.getElementById('status').style.color = "green";
+            document.getElementById('selection').style.display = 'none';
+            document.getElementById('wifi-instr').style.display = 'block';
+            document.getElementById('controls').style.display = 'block';
+        }
+
+        // Universal Command Sender
+        async function sendCmd(c) {
+            if (mode === "BLE") {
+                const encoder = new TextEncoder();
+                await characteristic.writeValue(encoder.encode(c));
+            } else if (mode === "WIFI") {
+                // The ESP32 WebServer is at 192.168.4.1
+                fetch(`http://192.168.4.1/cmd?c=${c}`).catch(e => console.log("Sent"));
+            } else {
+                alert("Please select a connection mode first!");
+            }
+        }
+    </script>
+</body>
 </html>
-
-
-
-
-
 
 
 
