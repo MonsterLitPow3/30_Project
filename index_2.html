@@ -1,4 +1,4 @@
-<!-- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -52,112 +52,16 @@
         }
     </script>
 </body>
-</html> -->
-
-
-
-
-
-
-
-
-
-
-
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP32 Dual-Mode Controller</title>
-    <style>
-        body { text-align: center; font-family: sans-serif; padding: 20px; background: #f0f0f0; }
-        .box { background: white; padding: 20px; border-radius: 10px; display: inline-block; }
-        button { width: 90px; height: 90px; font-size: 16px; margin: 5px; cursor: pointer; border-radius: 10px; border: none; background: #333; color: white; }
-        button:active { background: #555; }
-        .control-panel { display: none; margin-top: 20px; }
-        #status { color: red; font-weight: bold; margin: 10px; }
-    </style>
-</head>
-<body>
-    <div class="box">
-        <h1>Car Controller</h1>
-        <div id="status">Disconnected</div>
-
-        <!-- Mode Selection -->
-        <div id="selection">
-            <button onclick="startBLE()" style="width: 150px; background: #007bff;">BLE (Android/PC)</button>
-            <button onclick="showWiFi()" style="width: 150px; background: #28a745;">Wi-Fi (iOS)</button>
-        </div>
-
-        <!-- Wi-Fi Instructions (Visible on iOS click) -->
-        <div id="wifi-instr" style="display:none;">
-            <p>1. Open iPhone Wi-Fi Settings</p>
-            <p>2. Connect to: <b>CAR_WIFI</b></p>
-            <p>3. Go to: <b>http://192.168.4.1</b></p>
-        </div>
-
-        <!-- Control Panel -->
-        <div id="controls" class="control-panel">
-            <button id="btnF">▲</button><br>
-            <button id="btnL">◀</button>
-            <button id="btnS" style="background:#dc3545;">STOP</button>
-            <button id="btnR">▶</button><br>
-            <button id="btnB">▼</button><br>
-            <button id="btnC">CW</button>
-            <button id="btnA">ACW</button>
-        </div>
-    </div>
-
-    <script>
-        let characteristic;
-        let mode = ""; // "BLE" or "WIFI"
-
-        // BLE logic
-        async function startBLE() {
-            if (!navigator.bluetooth) return alert("Use Chrome/Edge on PC or Android.");
-            try {
-                const device = await navigator.bluetooth.requestDevice({
-                    filters: [{ name: 'CAR_CONTROL' }],
-                    optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb']
-                });
-                const server = await device.gatt.connect();
-                const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
-                characteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
-                mode = "BLE";
-                document.getElementById('status').innerText = "Connected via BLE";
-                document.getElementById('status').style.color = "green";
-                document.getElementById('selection').style.display = 'none';
-                document.getElementById('controls').style.display = 'block';
-            } catch(e) { alert("BLE Failed: " + e); }
-        }
-
-        function showWiFi() {
-            mode = "WIFI";
-            document.getElementById('selection').style.display = 'none';
-            document.getElementById('wifi-instr').style.display = 'block';
-            document.getElementById('controls').style.display = 'block';
-            document.getElementById('status').innerText = "Using Wi-Fi Mode";
-        }
-
-        // Send Command
-        async function sendCmd(c) {
-            if (mode === "BLE") {
-                const encoder = new TextEncoder();
-                await characteristic.writeValue(encoder.encode(c));
-            } else {
-                fetch(`http://192.168.4.1/cmd?c=${c}`).catch(e => {});
-            }
-        }
-
-        // Button Binders
-        const cmds = { 'btnF':'F', 'btnB':'B', 'btnL':'L', 'btnR':'R', 'btnS':'S', 'btnC':'C', 'btnA':'A' };
-        for (let id in cmds) {
-            const btn = document.getElementById(id);
-            btn.addEventListener("mousedown", () => sendCmd(cmds[id]));
-            btn.addEventListener("touchstart", (e) => { e.preventDefault(); sendCmd(cmds[id]); });
-        }
-    </script>
-</body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
