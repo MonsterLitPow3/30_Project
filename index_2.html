@@ -57,12 +57,17 @@
 
 
 
+
+
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP32 Dual-Mode Controller</title>
+    <title>Car Controller</title>
     <style>
         * {
             margin: 0;
@@ -71,8 +76,8 @@
         }
 
         body {
-            font-family: 'Segoe UI', Roboto, sans-serif;
-            background-color: #ffffff;
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -82,62 +87,44 @@
 
         .container {
             width: 100%;
-            max-width: 420px;
-            background: #ffffff;
-            border-radius: 16px;
-            box-shadow: 0 0 25px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
             padding: 30px;
             text-align: center;
         }
 
         .title {
             font-size: 24px;
-            font-weight: 600;
-            color: #111;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
+            color: #222;
         }
 
         #status {
-            font-size: 15px;
-            font-weight: bold;
-            margin: 10px 0 25px;
-            color: #e53935;
-        }
-
-        /* Mode Buttons */
-        .mode-group {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 25px;
-        }
-
-        .mode-btn {
-            flex: 1;
-            height: 50px;
-            border-radius: 10px;
-            border: none;
             font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: 0.2s;
+            font-weight: bold;
+            color: red;
+            margin-bottom: 30px;
         }
 
-        .ble-btn {
-            background: #000000;
+        .connect-btn {
+            width: 100%;
+            height: 55px;
+            border-radius: 12px;
+            border: none;
+            background: #007AFF;
             color: white;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 20px;
         }
 
-        .wifi-btn {
-            background: #f2f2f2;
-            color: #666;
-            cursor: default;
+        .connect-btn:active {
+            background: #0062CC;
         }
 
-        .ble-btn:active {
-            background: #333;
-        }
-
-        /* Control Panel */
         .control-panel {
             display: none;
             margin-top: 20px;
@@ -162,128 +149,117 @@
             border: none;
             background: #111;
             color: white;
-            font-size: 22px;
-            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
             transition: 0.15s;
             user-select: none;
         }
 
-        .control-btn:active {
-            background: #555;
-            transform: scale(0.96);
+        .control-btn.pressed {
+            background: #007AFF !important;
+            transform: scale(0.92);
         }
 
         .stop-btn {
-            background: #e53935 !important;
-            color: white;
-            font-size: 14px;
-            font-weight: bold;
+            background: #FF3B30 !important;
         }
 
-        .stop-btn:active {
-            background: #c62828 !important;
-        }
-
-        /* WiFi Tip */
-        #wifi-tip {
-            display: none;
-            color: #444;
-            font-size: 14px;
-            margin: 15px 0;
-            line-height: 1.5;
-        }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h1 class="title">Smart Car Controller</h1>
+        <h1 class="title">Smart Car Control</h1>
         <div id="status">Disconnected</div>
 
-        <!-- Connection Mode -->
-        <div id="mode-select" class="mode-group">
-            <button class="mode-btn ble-btn" onclick="startBLE()">BLE (Bluetooth)</button>
-            <button class="mode-btn wifi-btn" onclick="showWifiTip()">Wi-Fi (Unsupported)</button>
-        </div>
+        <button class="connect-btn" id="connectBtn" onclick="startBLE()">Connect BLE</button>
 
-        <!-- WiFi Tip -->
-        <div id="wifi-tip">
-            Wi-Fi mode is currently <b>not supported</b> on iOS devices.<br>
-            Please use BLE mode to control the car.
-        </div>
-
-        <!-- 7 Control Buttons -->
-        <div id="controls" class="control-panel">
+        <div class="control-panel" id="controls">
             <div class="btn-grid">
                 <div class="row">
-                    <button class="control-btn" onclick="sendCmd('F')">F</button>
+                    <button class="control-btn" data-cmd="F">FORWARD</button>
                 </div>
                 <div class="row">
-                    <button class="control-btn" onclick="sendCmd('L')">L</button>
-                    <button class="control-btn stop-btn" onclick="sendCmd('S')">STOP</button>
-                    <button class="control-btn" onclick="sendCmd('R')">R</button>
+                    <button class="control-btn" data-cmd="L">LEFT</button>
+                    <button class="control-btn stop-btn" data-cmd="S">STOP</button>
+                    <button class="control-btn" data-cmd="R">RIGHT</button>
                 </div>
                 <div class="row">
-                    <button class="control-btn" onclick="sendCmd('B')">B</button>
+                    <button class="control-btn" data-cmd="B">BACKWARD</button>
                 </div>
                 <div class="row">
-                    <button class="control-btn" onclick="sendCmd('A')">CCW</button>
-                    <button class="control-btn" onclick="sendCmd('C')">CW</button>
+                    <button class="control-btn" data-cmd="A">CCW</button>
+                    <button class="control-btn" data-cmd="C">CW</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        let characteristic;
-        let mode = "";
+        let characteristic = null;
+        let currentCmd = null;
+        let isHolding = false;
 
-        // Show WiFi Unsupported Tip
-        function showWifiTip() {
-            document.getElementById('wifi-tip').style.display = 'block';
-        }
+        const buttons = document.querySelectorAll('.control-btn');
 
-        // BLE Connection
+        // BLE 连接
         async function startBLE() {
-            if (!navigator.bluetooth) {
-                alert("Bluetooth is not supported in this browser. Use Chrome / Edge.");
-                return;
-            }
             try {
                 const device = await navigator.bluetooth.requestDevice({
                     filters: [{ name: 'CAR_CONTROL' }],
                     optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb']
                 });
+
                 const server = await device.gatt.connect();
                 const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
                 characteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
 
-                mode = "BLE";
-                document.getElementById('status').innerText = "Connected: BLE";
-                document.getElementById('status').style.color = "#2e7d32";
-                document.getElementById('mode-select').style.display = 'none';
-                document.getElementById('wifi-tip').style.display = 'none';
-                document.getElementById('controls').style.display = 'block';
+                document.getElementById('status').innerText = "Connected";
+                document.getElementById('status').style.color = "green";
+                document.getElementById('connectBtn').style.display = "none";
+                document.getElementById('controls').style.display = "block";
             } catch (e) {
-                alert("BLE Connection Failed: " + e.message);
+                alert("Failed: " + e.message);
             }
         }
 
-        // Universal Command Sender
+        // 发送指令
         async function sendCmd(cmd) {
-            if (mode !== "BLE") {
-                alert("Please connect via BLE first!");
-                return;
-            }
-
+            if (!characteristic) return;
             try {
-                const encoder = new TextEncoder();
-                await characteristic.writeValue(encoder.encode(cmd));
-                console.log("Sent:", cmd);
+                await characteristic.writeValue(new TextEncoder().encode(cmd));
             } catch (e) {
-                console.log("Send failed:", e);
+                console.log("Send error");
             }
+        }
+
+        // 按钮长按逻辑
+        buttons.forEach(btn => {
+            btn.addEventListener('mousedown', start);
+            btn.addEventListener('touchstart', start);
+
+            btn.addEventListener('mouseup', stop);
+            btn.addEventListener('mouseleave', stop);
+            btn.addEventListener('touchend', stop);
+        });
+
+        function start(e) {
+            e.preventDefault();
+            const cmd = this.dataset.cmd;
+            isHolding = true;
+            currentCmd = cmd;
+            this.classList.add('pressed');
+            sendCmd(cmd);
+        }
+
+        function stop(e) {
+            e.preventDefault();
+            isHolding = false;
+            currentCmd = null;
+            buttons.forEach(b => b.classList.remove('pressed'));
+            sendCmd('S');
         }
     </script>
 </body>
 </html>
+
