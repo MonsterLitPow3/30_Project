@@ -62,7 +62,7 @@
 
 
 
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -314,6 +314,303 @@
     function enterPet() {
         document.getElementById('modeSelect').style.display = 'none';
         document.getElementById('petMode').style.display = 'block';
+    }
+
+    bindButtons();
+</script>
+</body>
+</html> -->
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Car Control</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            padding: 30px;
+            text-align: center;
+        }
+
+        .title {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #222;
+        }
+
+        #status {
+            font-size: 16px;
+            font-weight: bold;
+            color: red;
+            margin-bottom: 30px;
+        }
+
+        .connect-btn {
+            width: 100%;
+            height: 55px;
+            border-radius: 12px;
+            border: none;
+            background: #007AFF;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .mode-select, .control-panel, .pet-panel {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .mode-btn {
+            width: 100%;
+            height: 60px;
+            border-radius: 12px;
+            border: none;
+            background: #111;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px 0;
+            transition: 0.15s;
+        }
+
+        .mode-btn:active {
+            background: #007AFF;
+            transform: scale(0.98);
+        }
+
+        .btn-grid {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .control-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 16px;
+            border: none;
+            background: #111;
+            color: white;
+            font-size: 28px;
+            transition: 0.15s;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .control-btn.pressed {
+            background: #007AFF !important;
+            transform: scale(0.92);
+        }
+
+        .stop-btn {
+            background: #FF3B30 !important;
+            font-size: 20px;
+        }
+
+        .pet-text {
+            font-size: 22px;
+            color: #007AFF;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+
+        .rssi-text {
+            font-size: 18px;
+            color: #333;
+            margin: 10px 0;
+        }
+
+        .call-btn {
+            width: 100%;
+            height: 60px;
+            border-radius: 12px;
+            border: none;
+            background: #FF9500;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">Smart Car Control</h1>
+        <div id="status">Disconnected</div>
+
+        <button class="connect-btn" id="connectBtn" onclick="startBLE()">Connect BLE</button>
+
+        <div class="mode-select" id="modeSelect">
+            <button class="mode-btn" onclick="enterController()">🎮 Controller Mode</button>
+            <button class="mode-btn" onclick="enterPet()">🐾 Pet Follow Mode</button>
+        </div>
+
+        <div class="control-panel" id="controls">
+            <div class="btn-grid">
+                <div class="row">
+                    <button class="control-btn" data-cmd="F">⬆️</button>
+                </div>
+                <div class="row">
+                    <button class="control-btn" data-cmd="L">⬅️</button>
+                    <button class="control-btn stop-btn" data-cmd="S">⏹️</button>
+                    <button class="control-btn" data-cmd="R">➡️</button>
+                </div>
+                <div class="row">
+                    <button class="control-btn" data-cmd="B">⬇️</button>
+                </div>
+                <div class="row">
+                    <button class="control-btn" data-cmd="A">↩️</button>
+                    <button class="control-btn" data-cmd="C">↪️</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="pet-panel" id="petMode">
+            <p class="pet-text">🐾 PET AUTO FOLLOW</p>
+            <p class="rssi-text" id="rssiDisplay">RSSI: --</p>
+            <p style="color:#666">Searching for you...</p>
+            <button class="call-btn" onclick="sendCall()">🚗 CALL CAR TO ME</button>
+        </div>
+    </div>
+
+<script>
+    let characteristic = null;
+    let bleDevice = null;
+    let frontBlocked = false;
+    let sendQueue = Promise.resolve();
+
+    const buttons = document.querySelectorAll('.control-btn');
+
+    async function startBLE() {
+        try {
+            bleDevice = await navigator.bluetooth.requestDevice({
+                filters: [{ name: 'CAR_CONTROL' }],
+                optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb']
+            });
+
+            const server = await bleDevice.gatt.connect();
+            const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
+            characteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+
+            document.getElementById('status').innerText = 'Connected';
+            document.getElementById('status').style.color = 'green';
+            document.getElementById('connectBtn').style.display = 'none';
+            document.getElementById('modeSelect').style.display = 'block';
+
+            // 实时发送 RSSI 给 STM32
+            setInterval(() => {
+                if (bleDevice && characteristic) {
+                    let rssi = bleDevice.rssi || -60;
+                    document.getElementById("rssiDisplay").innerText = "RSSI: " + rssi;
+                    
+                    // 发送格式：R-55
+                    sendCmd("R" + rssi);
+                }
+            }, 200);
+
+        } catch (e) {
+            alert('Failed: ' + e.message);
+        }
+    }
+
+    function queueWrite(cmd) {
+        if (!characteristic) return;
+        sendQueue = sendQueue.then(() =>
+            characteristic.writeValue(new TextEncoder().encode(cmd))
+        ).catch(() => {});
+    }
+
+    function sendCmd(cmd) {
+        if (!characteristic) return;
+        queueWrite(cmd);
+    }
+
+    function bindButtons() {
+        buttons.forEach(btn => {
+            btn.addEventListener('pointerdown', startPress);
+            btn.addEventListener('pointerup', endPress);
+            btn.addEventListener('pointercancel', endPress);
+            btn.addEventListener('pointerleave', endPress);
+        });
+    }
+
+    function startPress(e) {
+        e.preventDefault();
+        if (!characteristic) return;
+
+        const cmd = this.dataset.cmd;
+        this.classList.add('pressed');
+
+        if (frontBlocked && cmd !== 'B' && cmd !== 'S') {
+            sendCmd('S');
+            return;
+        }
+
+        sendCmd(cmd);
+    }
+
+    function endPress(e) {
+        e.preventDefault();
+        buttons.forEach(b => b.classList.remove('pressed'));
+        sendCmd('S');
+    }
+
+    function enterController() {
+        document.getElementById('modeSelect').style.display = 'none';
+        document.getElementById('controls').style.display = 'block';
+        bindButtons();
+    }
+
+    // 🐾 PET MODE
+    function enterPet() {
+        document.getElementById('modeSelect').style.display = 'none';
+        document.getElementById('petMode').style.display = 'block';
+    }
+
+    // 🚗 一键召唤：发送 '0' 给 STM32 = 小车来找你
+    function sendCall() {
+        sendCmd('0');
     }
 
     bindButtons();
