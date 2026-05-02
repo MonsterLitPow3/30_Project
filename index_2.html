@@ -263,10 +263,80 @@
 
 
 
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Car Control</title>
+    <style>
+        /* Original Styles preserved */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+        body { background: #f5f5f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; }
+        .container { width: 100%; max-width: 360px; background: #fff; border-radius: 18px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); padding: 25px 20px; text-align: center; }
+        .title { font-size: 22px; margin-bottom: 8px; color: #1a1a1a; font-weight: 600; }
+        #status { font-size: 15px; font-weight: bold; color: red; margin-bottom: 25px; }
+        .connect-btn { width: 100%; height: 52px; border-radius: 12px; border: none; background: #007AFF; color: #fff; font-size: 17px; font-weight: 600; cursor: pointer; margin-bottom: 18px; }
+        
+        .mode-select, .control-panel, .pet-panel { display: none; margin-top: 15px; }
+        .mode-btn { width: 100%; height: 55px; border-radius: 12px; border: none; background: #111; color: #fff; font-size: 17px; font-weight: 600; cursor: pointer; margin: 8px 0; }
+        
+        .btn-grid { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .row { display: flex; gap: 10px; }
+        .control-btn { width: 72px; height: 72px; border-radius: 14px; border: none; background: #111; color: #fff; font-size: 16px; font-weight: 600; transition: 0.15s; user-select: none; touch-action: none; display: flex; justify-content: center; align-items: center; }
+        .control-btn.pressed { background: #007AFF !important; transform: scale(0.92); }
+        .stop-btn { background: #FF3B30 !important; }
+
+        /* Updated Pet Panel Styles */
+        .pet-panel { background: #f9f9f9; padding: 20px; border-radius: 15px; border: 1px solid #ddd; }
+        .rssi-val { font-size: 32px; font-weight: bold; color: #007AFF; margin: 10px 0; }
+        .back-btn { margin-top: 20px; background: #8e8e93; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">Smart Car Control</h1>
+        <div id="status">Disconnected</div>
+
+        <button class="connect-btn" id="connectBtn" onclick="startBLE()">Connect BLE</button>
+
+        <div class="mode-select" id="modeSelect">
+            <button class="mode-btn" onclick="enterController()">🎮 Controller Mode</button>
+            <button class="mode-btn" onclick="enterPet()">🐾 Pet Mode</button>
+        </div>
+
+        <div class="control-panel" id="controls">
+            <div class="btn-grid">
+                <div class="row"><button class="control-btn" data-cmd="F">F</button></div>
+                <div class="row">
+                    <button class="control-btn" data-cmd="L">L</button>
+                    <button class="control-btn stop-btn" data-cmd="S">S</button>
+                    <button class="control-btn" data-cmd="R">R</button>
+                </div>
+                <div class="row"><button class="control-btn" data-cmd="B">B</button></div>
+                <div class="row">
+                    <button class="control-btn" data-cmd="A">A</button>
+                    <button class="control-btn" data-cmd="C">C</button>
+                </div>
+            </div>
+            <button class="mode-btn back-btn" onclick="exitToMenu()">Back to Menu</button>
+        </div>
+
+        <div class="pet-panel" id="petMode">
+            <p>🐾 Signal Tracking Active</p>
+            <div class="rssi-val" id="rssiDisplay">--</div>
+            <p>Current RSSI value (dBm)</p>
+            <button class="mode-btn back-btn" onclick="exitToMenu()">Back to Menu</button>
+        </div>
+    </div>
+
 <script>
     let characteristic = null;
-    let isPetMode = false;
-    let rssiInterval = null;
 
     async function startBLE() {
         try {
@@ -274,82 +344,60 @@
                 filters: [{ name: 'CAR_CONTROL' }],
                 optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb']
             });
-
             const server = await device.gatt.connect();
             const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
             characteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
 
-            // Start listening for notifications (RSSI)
+            // Listen for continuous RSSI updates
             await characteristic.startNotifications();
-            characteristic.addEventListener('characteristicvaluechanged', handleRSSI);
+            characteristic.addEventListener('characteristicvaluechanged', (e) => {
+                let val = new TextDecoder().decode(e.target.value);
+                if (val.startsWith('R')) {
+                    document.getElementById('rssiDisplay').innerText = val.substring(1);
+                }
+            });
 
             document.getElementById('status').innerText = 'Connected';
             document.getElementById('status').style.color = 'green';
             document.getElementById('connectBtn').style.display = 'none';
             document.getElementById('modeSelect').style.display = 'block';
-
-        } catch (e) {
-            alert('Connection failed: ' + e.message);
-        }
-    }
-
-    function handleRSSI(event) {
-        const value = new TextDecoder().decode(event.target.value);
-        const rssi = parseInt(value);
-
-        if (!isNaN(rssi) && isPetMode) {
-            document.getElementById('rssiValue').innerText = `Current RSSI value: ${rssi} dBm`;
-        }
+        } catch (e) { alert('Failed: ' + e.message); }
     }
 
     function sendCmd(cmd) {
         if (!characteristic) return;
-        characteristic.writeValue(new TextEncoder().encode(cmd));
-    }
-
-    // Bind buttons (same as before)
-    function bindButtons() {
-        document.querySelectorAll('.control-btn').forEach(btn => {
-            btn.addEventListener('pointerdown', (e) => {
-                e.preventDefault();
-                btn.classList.add('pressed');
-                sendCmd(btn.dataset.cmd);
-            });
-            btn.addEventListener('pointerup', (e) => {
-                e.preventDefault();
-                document.querySelectorAll('.control-btn').forEach(b => b.classList.remove('pressed'));
-                sendCmd('S');
-            });
-        });
+        characteristic.writeValue(new TextEncoder().encode(cmd)).catch(e => {});
     }
 
     function enterController() {
-        isPetMode = false;
         document.getElementById('modeSelect').style.display = 'none';
+        document.getElementById('petMode').style.display = 'none';
         document.getElementById('controls').style.display = 'block';
-        bindButtons();
     }
 
     function enterPet() {
-        isPetMode = true;
         document.getElementById('modeSelect').style.display = 'none';
+        document.getElementById('controls').style.display = 'none';
         document.getElementById('petMode').style.display = 'block';
-        
-        // Show RSSI display
-        document.getElementById('petMode').innerHTML = `
-            <p class="pet-text">🐾 Pet Mode Active</p>
-            <p id="rssiValue" style="font-size: 18px; margin-top: 20px; color: #007AFF;">
-                Current RSSI value: -- dBm
-            </p>
-        `;
     }
 
-    // Initialize
-    bindButtons();
+    function exitToMenu() {
+        document.getElementById('controls').style.display = 'none';
+        document.getElementById('petMode').style.display = 'none';
+        document.getElementById('modeSelect').style.display = 'block';
+    }
+
+    // Button event listeners
+    document.querySelectorAll('.control-btn').forEach(btn => {
+        btn.addEventListener('pointerdown', (e) => {
+            btn.classList.add('pressed');
+            sendCmd(btn.dataset.cmd);
+        });
+        btn.addEventListener('pointerup', () => {
+            btn.classList.remove('pressed');
+            sendCmd('S');
+        });
+    });
 </script>
-
-
-
-
-
-
+</body>
+</html>
