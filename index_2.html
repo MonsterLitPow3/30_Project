@@ -73,7 +73,7 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Arial', sans-serif;
+            font-family: Arial, sans-serif;
         }
 
         body {
@@ -167,6 +167,8 @@
             font-size: 28px;
             transition: 0.15s;
             user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -187,9 +189,16 @@
             color: #666;
             margin-top: 50px;
         }
+
+        .obstacle-on {
+            color: #FF3B30;
+        }
+
+        .obstacle-off {
+            color: green;
+        }
     </style>
 </head>
-
 <body>
     <div class="container">
         <h1 class="title">Smart Car Control</h1>
@@ -197,13 +206,11 @@
 
         <button class="connect-btn" id="connectBtn" onclick="startBLE()">Connect BLE</button>
 
-        <!-- 模式选择页面 -->
         <div class="mode-select" id="modeSelect">
             <button class="mode-btn" onclick="enterController()">🎮 Controller Mode</button>
             <button class="mode-btn" onclick="enterPet()">🐾 Pet Mode</button>
         </div>
 
-        <!-- 控制器页面 -->
         <div class="control-panel" id="controls">
             <div class="btn-grid">
                 <div class="row">
@@ -224,7 +231,6 @@
             </div>
         </div>
 
-        <!-- Pet模式页面 -->
         <div class="pet-panel" id="petMode">
             <p class="pet-text">🐾 Maintenancing...</p>
         </div>
@@ -234,11 +240,12 @@
         let characteristic = null;
         let currentCmd = null;
         let isHolding = false;
+        let frontBlocked = false;
         let keepAliveInterval = null;
+        let sendQueue = Promise.resolve();
 
         const buttons = document.querySelectorAll('.control-btn');
 
-        // BLE 连接
         async function startBLE() {
             try {
                 const device = await navigator.bluetooth.requestDevice({
@@ -250,80 +257,96 @@
                 const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
                 characteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
 
-                document.getElementById('status').innerText = "Connected";
-                document.getElementById('status').style.color = "green";
-                document.getElementById('connectBtn').style.display = "none";
-                document.getElementById('modeSelect').style.display = "block";
-
-                // 心跳保活，防止断连
-                keepAliveInterval = setInterval(() => {
-                    if (characteristic && !isHolding) {
-                        sendCmd(''); // 发送空包维持连接
-                    }
-                }, 3000);
+                document.getElementById('status').innerText = 'Connected';
+                document.getElementById('status').style.color = 'green';
+                document.getElementById('connectBtn').style.display = 'none';
+                document.getElementById('modeSelect').style.display = 'block';
             } catch (e) {
-                alert("Failed: " + e.message);
+                alert('Failed: ' + e.message);
             }
         }
 
-        // 发送指令（带错误重试）
-        async function sendCmd(cmd) {
+        function queueWrite(cmd) {
             if (!characteristic) return;
-            try {
-                await characteristic.writeValue(new TextEncoder().encode(cmd));
-            } catch (e) {
-                console.log("Send error, retrying...");
-                try {
-                    await characteristic.writeValue(new TextEncoder().encode(cmd));
-                } catch (e2) {
-                    console.log("Retry failed");
-                }
+            sendQueue = sendQueue.then(() =>
+                characteristic.writeValue(new TextEncoder().encode(cmd))
+            ).catch(() => {});
+        }
+
+        function sendCmd(cmd) {
+            if (!characteristic) return;
+
+            if (frontBlocked && cmd !== 'B' && cmd !== 'S' && cmd !== '') {
+                cmd = 'S';
+            }
+
+            queueWrite(cmd);
+        }
+
+        function updateObstacleStatus(blocked) {
+            frontBlocked = blocked;
+            const s = document.getElementById('status');
+            if (blocked) {
+                s.innerText = 'Connected - Front Obstacle';
+                s.className = 'obstacle-on';
+            } else {
+                s.innerText = 'Connected';
+                s.className = 'obstacle-off';
             }
         }
 
-        // 按钮长按逻辑（带防抖）
-        buttons.forEach(btn => {
-            btn.addEventListener('mousedown', start);
-            btn.addEventListener('touchstart', start, {passive: false});
+        function bindButtons() {
+            buttons.forEach(btn => {
+                btn.addEventListener('pointerdown', startPress);
+                btn.addEventListener('pointerup', endPress);
+                btn.addEventListener('pointercancel', endPress);
+                btn.addEventListener('pointerleave', endPress);
+            });
+        }
 
-            btn.addEventListener('mouseup', stop);
-            btn.addEventListener('mouseleave', stop);
-            btn.addEventListener('touchend', stop);
-        });
-
-        function start(e) {
+        function startPress(e) {
             e.preventDefault();
+            if (!characteristic) return;
+
             const cmd = this.dataset.cmd;
-            isHolding = true;
             currentCmd = cmd;
+            isHolding = true;
             this.classList.add('pressed');
+
+            if (frontBlocked && cmd !== 'B' && cmd !== 'S') {
+                if (cmd !== 'S') sendCmd('S');
+                return;
+            }
+
             sendCmd(cmd);
         }
 
-        // 修复：只有按 STOP 或非后退键松开才发停止
-        function stop(e) {
+        function endPress(e) {
             e.preventDefault();
+            if (!isHolding) return;
+
             isHolding = false;
-            const lastCmd = currentCmd;
             currentCmd = null;
             buttons.forEach(b => b.classList.remove('pressed'));
-
-            if (lastCmd !== 'B') {
-                sendCmd('S');
-            }
+            sendCmd('S');
         }
 
-        // 进入控制器模式
         function enterController() {
-            document.getElementById('modeSelect').style.display = "none";
-            document.getElementById('controls').style.display = "block";
+            document.getElementById('modeSelect').style.display = 'none';
+            document.getElementById('controls').style.display = 'block';
+            bindButtons();
         }
 
-        // 进入Pet模式
         function enterPet() {
-            document.getElementById('modeSelect').style.display = "none";
-            document.getElementById('petMode').style.display = "block";
+            document.getElementById('modeSelect').style.display = 'none';
+            document.getElementById('petMode').style.display = 'block';
         }
+
+        window.addEventListener('beforeunload', () => {
+            if (keepAliveInterval) clearInterval(keepAliveInterval);
+        });
+
+        bindButtons();
     </script>
 </body>
 </html>
