@@ -236,117 +236,87 @@
         </div>
     </div>
 
-    <script>
-        let characteristic = null;
-        let currentCmd = null;
-        let isHolding = false;
-        let frontBlocked = false;
-        let keepAliveInterval = null;
-        let sendQueue = Promise.resolve();
+   <script>
+    let characteristic = null;
+    let frontBlocked = false;
+    let sendQueue = Promise.resolve();
 
-        const buttons = document.querySelectorAll('.control-btn');
+    const buttons = document.querySelectorAll('.control-btn');
 
-        async function startBLE() {
-            try {
-                const device = await navigator.bluetooth.requestDevice({
-                    filters: [{ name: 'CAR_CONTROL' }],
-                    optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb']
-                });
-
-                const server = await device.gatt.connect();
-                const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
-                characteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
-
-                document.getElementById('status').innerText = 'Connected';
-                document.getElementById('status').style.color = 'green';
-                document.getElementById('connectBtn').style.display = 'none';
-                document.getElementById('modeSelect').style.display = 'block';
-            } catch (e) {
-                alert('Failed: ' + e.message);
-            }
-        }
-
-        function queueWrite(cmd) {
-            if (!characteristic) return;
-            sendQueue = sendQueue.then(() =>
-                characteristic.writeValue(new TextEncoder().encode(cmd))
-            ).catch(() => {});
-        }
-
-        function sendCmd(cmd) {
-            if (!characteristic) return;
-
-            if (frontBlocked && cmd !== 'B' && cmd !== 'S' && cmd !== '') {
-                cmd = 'S';
-            }
-
-            queueWrite(cmd);
-        }
-
-        function updateObstacleStatus(blocked) {
-            frontBlocked = blocked;
-            const s = document.getElementById('status');
-            if (blocked) {
-                s.innerText = 'Connected - Front Obstacle';
-                s.className = 'obstacle-on';
-            } else {
-                s.innerText = 'Connected';
-                s.className = 'obstacle-off';
-            }
-        }
-
-        function bindButtons() {
-            buttons.forEach(btn => {
-                btn.addEventListener('pointerdown', startPress);
-                btn.addEventListener('pointerup', endPress);
-                btn.addEventListener('pointercancel', endPress);
-                btn.addEventListener('pointerleave', endPress);
+    async function startBLE() {
+        try {
+            const device = await navigator.bluetooth.requestDevice({
+                filters: [{ name: 'CAR_CONTROL' }],
+                optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb']
             });
+
+            const server = await device.gatt.connect();
+            const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
+            characteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+
+            document.getElementById('status').innerText = 'Connected';
+            document.getElementById('status').style.color = 'green';
+            document.getElementById('connectBtn').style.display = 'none';
+            document.getElementById('modeSelect').style.display = 'block';
+        } catch (e) {
+            alert('Failed: ' + e.message);
         }
+    }
 
-        function startPress(e) {
-            e.preventDefault();
-            if (!characteristic) return;
+    function queueWrite(cmd) {
+        if (!characteristic) return;
+        sendQueue = sendQueue.then(() =>
+            characteristic.writeValue(new TextEncoder().encode(cmd))
+        ).catch(() => {});
+    }
 
-            const cmd = this.dataset.cmd;
-            currentCmd = cmd;
-            isHolding = true;
-            this.classList.add('pressed');
+    function sendCmd(cmd) {
+        if (!characteristic) return;
+        queueWrite(cmd);
+    }
 
-            if (frontBlocked && cmd !== 'B' && cmd !== 'S') {
-                if (cmd !== 'S') sendCmd('S');
-                return;
-            }
-
-            sendCmd(cmd);
-        }
-
-        function endPress(e) {
-            e.preventDefault();
-            if (!isHolding) return;
-
-            isHolding = false;
-            currentCmd = null;
-            buttons.forEach(b => b.classList.remove('pressed'));
-            sendCmd('S');
-        }
-
-        function enterController() {
-            document.getElementById('modeSelect').style.display = 'none';
-            document.getElementById('controls').style.display = 'block';
-            bindButtons();
-        }
-
-        function enterPet() {
-            document.getElementById('modeSelect').style.display = 'none';
-            document.getElementById('petMode').style.display = 'block';
-        }
-
-        window.addEventListener('beforeunload', () => {
-            if (keepAliveInterval) clearInterval(keepAliveInterval);
+    function bindButtons() {
+        buttons.forEach(btn => {
+            btn.addEventListener('pointerdown', startPress);
+            btn.addEventListener('pointerup', endPress);
+            btn.addEventListener('pointercancel', endPress);
+            btn.addEventListener('pointerleave', endPress);
         });
+    }
 
+    function startPress(e) {
+        e.preventDefault();
+        if (!characteristic) return;
+
+        const cmd = this.dataset.cmd;
+        this.classList.add('pressed');
+
+        if (frontBlocked && cmd !== 'B' && cmd !== 'S') {
+            sendCmd('S');
+            return;
+        }
+
+        sendCmd(cmd);
+    }
+
+    function endPress(e) {
+        e.preventDefault();
+        buttons.forEach(b => b.classList.remove('pressed'));
+        sendCmd('S');
+    }
+
+    function enterController() {
+        document.getElementById('modeSelect').style.display = 'none';
+        document.getElementById('controls').style.display = 'block';
         bindButtons();
-    </script>
+    }
+
+    function enterPet() {
+        document.getElementById('modeSelect').style.display = 'none';
+        document.getElementById('petMode').style.display = 'block';
+    }
+
+    bindButtons();
+</script>
 </body>
 </html>
