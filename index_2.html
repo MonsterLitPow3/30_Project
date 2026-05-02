@@ -67,16 +67,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Car Controller</title>
+    <title>Smart Car Control</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
         }
 
         body {
-            font-family: Arial, sans-serif;
             background: #f5f5f5;
             display: flex;
             justify-content: center;
@@ -121,38 +121,55 @@
             margin-bottom: 20px;
         }
 
-        .connect-btn:active {
-            background: #0062CC;
-        }
-
-        .control-panel {
+        .mode-select, .control-panel, .pet-panel {
             display: none;
             margin-top: 20px;
         }
 
-        .btn-grid {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .row {
-            display: flex;
-            gap: 10px;
-        }
-
-        .control-btn {
-            width: 75px;
-            height: 75px;
+        .mode-btn {
+            width: 100%;
+            height: 60px;
             border-radius: 12px;
             border: none;
             background: #111;
             color: white;
             font-size: 18px;
             font-weight: bold;
+            cursor: pointer;
+            margin: 10px 0;
+            transition: 0.15s;
+        }
+
+        .mode-btn:active {
+            background: #007AFF;
+            transform: scale(0.98);
+        }
+
+        .btn-grid {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .control-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 16px;
+            border: none;
+            background: #111;
+            color: white;
+            font-size: 28px;
             transition: 0.15s;
             user-select: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         .control-btn.pressed {
@@ -162,8 +179,14 @@
 
         .stop-btn {
             background: #FF3B30 !important;
+            font-size: 20px;
         }
 
+        .pet-text {
+            font-size: 20px;
+            color: #666;
+            margin-top: 50px;
+        }
     </style>
 </head>
 
@@ -174,24 +197,36 @@
 
         <button class="connect-btn" id="connectBtn" onclick="startBLE()">Connect BLE</button>
 
+        <!-- 模式选择页面 -->
+        <div class="mode-select" id="modeSelect">
+            <button class="mode-btn" onclick="enterController()">🎮 Controller Mode</button>
+            <button class="mode-btn" onclick="enterPet()">🐾 Pet Mode</button>
+        </div>
+
+        <!-- 控制器页面 -->
         <div class="control-panel" id="controls">
             <div class="btn-grid">
                 <div class="row">
-                    <button class="control-btn" data-cmd="F">FORWARD</button>
+                    <button class="control-btn" data-cmd="F">⬆️</button>
                 </div>
                 <div class="row">
-                    <button class="control-btn" data-cmd="L">LEFT</button>
-                    <button class="control-btn stop-btn" data-cmd="S">STOP</button>
-                    <button class="control-btn" data-cmd="R">RIGHT</button>
+                    <button class="control-btn" data-cmd="L">⬅️</button>
+                    <button class="control-btn stop-btn" data-cmd="S">⏹️</button>
+                    <button class="control-btn" data-cmd="R">➡️</button>
                 </div>
                 <div class="row">
-                    <button class="control-btn" data-cmd="B">BACKWARD</button>
+                    <button class="control-btn" data-cmd="B">⬇️</button>
                 </div>
                 <div class="row">
-                    <button class="control-btn" data-cmd="A">CCW</button>
-                    <button class="control-btn" data-cmd="C">CW</button>
+                    <button class="control-btn" data-cmd="A">↩️</button>
+                    <button class="control-btn" data-cmd="C">↪️</button>
                 </div>
             </div>
+        </div>
+
+        <!-- Pet模式页面 -->
+        <div class="pet-panel" id="petMode">
+            <p class="pet-text">🐾 Maintenancing...</p>
         </div>
     </div>
 
@@ -199,6 +234,7 @@
         let characteristic = null;
         let currentCmd = null;
         let isHolding = false;
+        let keepAliveInterval = null;
 
         const buttons = document.querySelectorAll('.control-btn');
 
@@ -217,26 +253,38 @@
                 document.getElementById('status').innerText = "Connected";
                 document.getElementById('status').style.color = "green";
                 document.getElementById('connectBtn').style.display = "none";
-                document.getElementById('controls').style.display = "block";
+                document.getElementById('modeSelect').style.display = "block";
+
+                // 心跳保活，防止断连
+                keepAliveInterval = setInterval(() => {
+                    if (characteristic && !isHolding) {
+                        sendCmd(''); // 发送空包维持连接
+                    }
+                }, 3000);
             } catch (e) {
                 alert("Failed: " + e.message);
             }
         }
 
-        // 发送指令
+        // 发送指令（带错误重试）
         async function sendCmd(cmd) {
             if (!characteristic) return;
             try {
                 await characteristic.writeValue(new TextEncoder().encode(cmd));
             } catch (e) {
-                console.log("Send error");
+                console.log("Send error, retrying...");
+                try {
+                    await characteristic.writeValue(new TextEncoder().encode(cmd));
+                } catch (e2) {
+                    console.log("Retry failed");
+                }
             }
         }
 
-        // 按钮长按逻辑
+        // 按钮长按逻辑（带防抖）
         buttons.forEach(btn => {
             btn.addEventListener('mousedown', start);
-            btn.addEventListener('touchstart', start);
+            btn.addEventListener('touchstart', start, {passive: false});
 
             btn.addEventListener('mouseup', stop);
             btn.addEventListener('mouseleave', stop);
@@ -252,14 +300,30 @@
             sendCmd(cmd);
         }
 
+        // 修复：只有按 STOP 或非后退键松开才发停止
         function stop(e) {
             e.preventDefault();
             isHolding = false;
+            const lastCmd = currentCmd;
             currentCmd = null;
             buttons.forEach(b => b.classList.remove('pressed'));
-            sendCmd('S');
+
+            if (lastCmd !== 'B') {
+                sendCmd('S');
+            }
+        }
+
+        // 进入控制器模式
+        function enterController() {
+            document.getElementById('modeSelect').style.display = "none";
+            document.getElementById('controls').style.display = "block";
+        }
+
+        // 进入Pet模式
+        function enterPet() {
+            document.getElementById('modeSelect').style.display = "none";
+            document.getElementById('petMode').style.display = "block";
         }
     </script>
 </body>
 </html>
-
