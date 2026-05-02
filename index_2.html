@@ -563,7 +563,7 @@
 
     function sendCmd(cmd) {
         if (!characteristic) return;
-        queueWrite(cmd);
+        queueWrite(cmd + '\n');
     }
 
     function bindButtons() {
