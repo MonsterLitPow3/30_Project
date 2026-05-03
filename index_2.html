@@ -503,7 +503,7 @@
         <!-- Natural Behaviour 运行界面 -->
         <div class="nbm-active-panel" id="nbmPanel">
             <div class="status-text" id="wanderingText">Your pet is wandering...</div>
-            <button class="mode-btn" onclick="stopNBM()">🛑 Stop Wandering</button>
+            <button class="mode-btn" id="toggleBtn" onclick="toggleWander()">🛑 Stop Wandering</button>
             <button class="mode-btn back-btn" onclick="backToPetMenu()">Back to Pet Menu</button>
         </div>
 
@@ -532,6 +532,7 @@
     let characteristic = null;
     let petName = "My Pet";
     let petType = "Friend";
+    let isWandering = false; // 漫游状态
 
     // 本地存储读取
     function loadProfile() {
@@ -582,7 +583,9 @@
             characteristic.addEventListener('characteristicvaluechanged', (e) => {
                 let val = new TextDecoder().decode(e.target.value);
                 if(val.startsWith('R')){
-                    document.getElementById('rssiDisplay').innerText = val.substring(1);
+                    if(document.getElementById('rssiDisplay')) {
+                        document.getElementById('rssiDisplay').innerText = val.substring(1);
+                    }
                 }
             });
 
@@ -623,21 +626,39 @@
     function startNBM() {
         closeAllPanels();
         document.getElementById('nbmPanel').style.display = 'block';
+        
+        isWandering = true;
+        document.getElementById("toggleBtn").textContent = "🛑 Stop Wandering";
         document.getElementById('wanderingText').innerText = 
             `🌿 ${petName} the ${petType} is currently wandering...`;
-        sendCmd('M'); // 启动PET模式
+        
+        sendCmd('M');
     }
 
-    // 停止仿生
-    function stopNBM() {
-        sendCmd('S');
-        document.getElementById('wanderingText').innerText = 
-            `🛑 ${petName} has stopped wandering`;
+    // 切换漫游：停止 / 继续
+    function toggleWander() {
+        const btn = document.getElementById("toggleBtn");
+        const txt = document.getElementById("wanderingText");
+
+        if (isWandering) {
+            // 停止
+            sendCmd('S');
+            btn.textContent = "▶️ Resume Wandering";
+            txt.textContent = `🛑 ${petName} has stopped wandering`;
+            isWandering = false;
+        } else {
+            // 继续漫游
+            sendCmd('M');
+            btn.textContent = "🛑 Stop Wandering";
+            txt.textContent = `🌿 ${petName} the ${petType} is currently wandering...`;
+            isWandering = true;
+        }
     }
 
     // 回到Pet菜单
     function backToPetMenu() {
         sendCmd('S');
+        isWandering = false;
         closeAllPanels();
         document.getElementById('petMainPanel').style.display = 'block';
     }
@@ -652,8 +673,9 @@
     // 返回主菜单
     function exitToMenu() {
         sendCmd('S');
+        isWandering = false;
         closeAllPanels();
-        document.getElementById('modeSelect').style.display = 'block';
+        document.getElementById("modeSelect").style.display = "block";
     }
 
     // 按键控制
