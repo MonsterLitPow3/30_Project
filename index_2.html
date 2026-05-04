@@ -279,6 +279,7 @@
             font-family: 'Arial', sans-serif; 
         }
         
+        /* 彻底禁止所有选中 */
         body, button, div, span, .control-btn, .mode-btn {
             user-select: none;
             -webkit-user-select: none;
@@ -288,6 +289,7 @@
             -webkit-touch-callout: none;
         }
         
+        /* 禁止图片和 emoji 被选中 */
         img, svg, .emoji, button span, button::before, button::after {
             pointer-events: none;
             user-select: none;
@@ -338,6 +340,7 @@
         }
         .connect-btn:active { transform: scale(0.96); }
 
+        /* 右上角设置按钮 */
         .settings-icon {
             position: absolute;
             top: 22px;
@@ -354,12 +357,14 @@
             display: none;
         }
 
+        /* 所有面板默认隐藏 */
         .mode-select, .control-panel, .pet-main-panel, 
         .nbm-active-panel, .setup-panel, .control-info { 
             display: none; 
             margin-top: 16px; 
         }
 
+        /* 控制信息显示区域 */
         .control-info {
             background: #e8f0fe;
             padding: 12px;
@@ -371,6 +376,7 @@
             word-break: break-word;
         }
 
+        /* 按钮样式 */
         .mode-btn { 
             width: 100%; 
             height: 56px; 
@@ -388,6 +394,7 @@
         .back-btn { background: #8e8e93 !important; }
         .stop-btn { background: #ff3b30 !important; }
 
+        /* 操控按钮布局 */
         .btn-grid { 
             display: flex; 
             flex-direction: column; 
@@ -417,6 +424,7 @@
             transform: scale(0.93); 
         }
 
+        /* 宠物面板 */
         .pet-main-panel, .nbm-active-panel { 
             background: #f9f9fb; 
             padding: 22px; 
@@ -436,6 +444,7 @@
             line-height: 1.4;
         }
 
+        /* 设置面板 */
         .setup-panel {
             background: #f9f9fb;
             padding: 24px;
@@ -482,35 +491,16 @@
             background: #ff3b30 !important;
             margin-top: 16px;
         }
-
+        
+        /* 防止任何拖拽选中 */
         button, div, span {
             -webkit-touch-callout: none;
         }
-
-        /* 额外两个按钮样式 */
-        .extra-row {
-          display: flex;
-          gap: 10px;
-          margin-top: 6px;
-        }
-        .extra-btn {
-          flex: 1;
-          height: 50px;
-          border-radius: 14px;
-          border: none;
-          background: #0a9900;
-          color: white;
-          font-size: 16px;
-          font-weight: 600;
-        }
-        .horn-btn {
-          background: #ff9500;
-        }
-
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- 右上角设置 -->
         <div class="settings-icon" id="settingsBtn" onclick="showSetup()">⚙️</div>
 
         <h1 class="title">Digipet Car</h1>
@@ -518,13 +508,14 @@
 
         <button class="connect-btn" id="connectBtn" onclick="startBLE()">Connect BLE</button>
 
+        <!-- 主菜单 -->
         <div class="mode-select" id="modeSelect">
             <button class="mode-btn" onclick="enterController()">🎮 Controller Mode</button>
             <button class="mode-btn" onclick="enterPetMain()">🐾 Pet Mode</button>
             <button class="mode-btn disconnect-btn" onclick="disconnectBLE()">🔌 Disconnect</button>
         </div>
 
-        <!-- 操控面板 + 新增两个按钮 -->
+        <!-- 手动控制 -->
         <div class="control-panel" id="controls">
             <div class="control-info" id="controlInfo">🎮 Ready to control</div>
             <div class="btn-grid">
@@ -544,18 +535,11 @@
                     <button class="control-btn" data-cmd="C">↻</button>
                 </div>
             </div>
-
-            <!-- ====================== 你要的两个新按钮 ====================== -->
-            <div class="extra-row">
-              <button class="extra-btn" onclick="playEasterEgg()">🥚 Easter Egg</button>
-              <button class="extra-btn horn-btn" onclick="carHorn()">📢 Car Horn</button>
-            </div>
-            <!-- ============================================================ -->
-
             <button class="mode-btn back-btn" onclick="exitToMenu()">Back to Menu</button>
             <button class="mode-btn disconnect-btn" onclick="disconnectBLE()">Disconnect</button>
         </div>
 
+        <!-- Pet Mode 二级菜单 -->
         <div class="pet-main-panel" id="petMainPanel">
             <button class="mode-btn" onclick="startNBM()">🌿 Natural Behaviour Mode</button>
             <button class="mode-btn" onclick="startSpotting()">👁 Spotting Mode</button>
@@ -563,6 +547,7 @@
             <button class="mode-btn disconnect-btn" onclick="disconnectBLE()">Disconnect</button>
         </div>
 
+        <!-- Natural Behaviour 运行界面 -->
         <div class="nbm-active-panel" id="nbmPanel">
             <div class="status-text" id="wanderingText">Your pet is wandering...</div>
             <button class="mode-btn" id="toggleBtn" onclick="toggleWander()">🛑 Stop Wandering</button>
@@ -570,6 +555,7 @@
             <button class="mode-btn disconnect-btn" onclick="disconnectBLE()">Disconnect</button>
         </div>
 
+        <!-- 宠物设置页面 -->
         <div class="setup-panel" id="setupPanel">
             <div class="setup-title">Pet Profile</div>
             <div class="input-group">
@@ -598,11 +584,18 @@
     let isWandering = false;
     let currentDirection = "";
 
+    // 方向名称映射
     const directionMap = {
-        'F': 'Forward', 'B': 'Backward', 'L': 'Left', 'R': 'Right',
-        'C': 'Clockwise', 'A': 'Anti-clockwise', 'S': 'Stopped'
+        'F': 'Forward',
+        'B': 'Backward',
+        'L': 'Left',
+        'R': 'Right',
+        'C': 'Clockwise',
+        'A': 'Anti-clockwise',
+        'S': 'Stopped'
     };
 
+    // 本地存储读取
     function loadProfile() {
         let n = localStorage.getItem("petName");
         let t = localStorage.getItem("petType");
@@ -612,20 +605,24 @@
         document.getElementById("petType").value = petType;
     }
 
+    // 保存宠物资料
     function savePetProfile() {
         petName = document.getElementById("petName").value || "Buddy";
         petType = document.getElementById("petType").value;
         localStorage.setItem("petName", petName);
         localStorage.setItem("petType", petType);
+        
         closeAllPanels();
         document.getElementById("modeSelect").style.display = "block";
     }
 
+    // 显示设置
     function showSetup() {
         closeAllPanels();
         document.getElementById("setupPanel").style.display = "block";
     }
 
+    // 关闭所有面板
     function closeAllPanels() {
         document.getElementById("modeSelect").style.display = "none";
         document.getElementById("controls").style.display = "none";
@@ -634,6 +631,7 @@
         document.getElementById("setupPanel").style.display = "none";
     }
 
+    // 更新控制信息显示
     function updateControlInfo(direction) {
         currentDirection = direction;
         const infoDiv = document.getElementById("controlInfo");
@@ -644,6 +642,7 @@
         }
     }
 
+    // BLE 连接
     async function startBLE() {
         try {
             device = await navigator.bluetooth.requestDevice({
@@ -656,23 +655,31 @@
             const server = await device.gatt.connect();
             const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
             characteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+
             characteristic.startNotifications();
             characteristic.addEventListener('characteristicvaluechanged', (e) => {
                 let val = new TextDecoder().decode(e.target.value);
+                if(val.startsWith('R')){
+                    if(document.getElementById('rssiDisplay')) {
+                        document.getElementById('rssiDisplay').innerText = val.substring(1);
+                    }
+                }
             });
 
+            // 更新UI - 连接成功
             document.getElementById('status').innerText = 'Connected';
             document.getElementById('status').style.color = '#007aff';
             document.getElementById('connectBtn').style.display = 'none';
             document.getElementById('settingsBtn').style.display = 'flex';
             
             loadProfile();
-            showSetup();
+            showSetup(); // 连接成功 → 自动弹出设置
         } catch (e) {
             alert('Connection failed: ' + e.message);
         }
     }
 
+    // 断开连接
     async function disconnectBLE() {
         if (device && device.gatt.connected) {
             device.gatt.disconnect();
@@ -680,25 +687,33 @@
         onDisconnected();
     }
 
+    // 断开连接回调
     function onDisconnected() {
         characteristic = null;
         device = null;
         isWandering = false;
+        
+        // 更新UI - 断开连接
         document.getElementById('status').innerText = 'Disconnected';
         document.getElementById('status').style.color = '#ff3b30';
         document.getElementById('connectBtn').style.display = 'block';
         document.getElementById('settingsBtn').style.display = 'none';
+        
         closeAllPanels();
     }
 
+    // 发送指令
     function sendCmd(cmd) {
         if(!characteristic) return;
         characteristic.writeValue(new TextEncoder().encode(cmd)).catch(err => {});
+        
+        // 更新控制界面显示
         if (document.getElementById('controls').style.display === 'block') {
             updateControlInfo(cmd);
         }
     }
 
+    // 进入手动模式
     function enterController() {
         closeAllPanels();
         document.getElementById('controls').style.display = 'block';
@@ -706,31 +721,39 @@
         sendCmd('S');
     }
 
+    // 进入 Pet 主菜单
     function enterPetMain() {
         closeAllPanels();
         document.getElementById('petMainPanel').style.display = 'block';
         sendCmd('S');
     }
 
+    // 启动仿生模式
     function startNBM() {
         closeAllPanels();
         document.getElementById('nbmPanel').style.display = 'block';
+        
         isWandering = true;
         document.getElementById("toggleBtn").textContent = "🛑 Stop Wandering";
         document.getElementById('wanderingText').innerHTML = 
             `🌿 ${petName} the ${petType} is currently <strong>wandering around</strong>...`;
+        
         sendCmd('M');
     }
 
+    // 切换漫游：停止 / 继续
     function toggleWander() {
         const btn = document.getElementById("toggleBtn");
         const txt = document.getElementById("wanderingText");
+
         if (isWandering) {
+            // 停止
             sendCmd('S');
             btn.textContent = "▶️ Resume Wandering";
             txt.innerHTML = `🛑 ${petName} the ${petType} has <strong>stopped wandering</strong>`;
             isWandering = false;
         } else {
+            // 继续漫游
             sendCmd('M');
             btn.textContent = "🛑 Stop Wandering";
             txt.innerHTML = `🌿 ${petName} the ${petType} is currently <strong>wandering around</strong>...`;
@@ -738,6 +761,7 @@
         }
     }
 
+    // 回到Pet菜单
     function backToPetMenu() {
         sendCmd('S');
         isWandering = false;
@@ -745,14 +769,16 @@
         document.getElementById('petMainPanel').style.display = 'block';
     }
 
+    // 信号追踪模式
     function startSpotting() {
         alert("👁 Spotting Mode - Follow the strongest signal!\n" + 
                `${petName} the ${petType} is tracking you!`);
-        sendCmd('T');
+        sendCmd('T');  // 发送追踪命令给STM32
         closeAllPanels();
         document.getElementById('petMainPanel').style.display = 'block';
     }
 
+    // 返回主菜单
     function exitToMenu() {
         sendCmd('S');
         isWandering = false;
@@ -760,22 +786,25 @@
         document.getElementById("modeSelect").style.display = "block";
     }
 
-    // ====================== 你要的两个新功能 ======================
-    function playEasterEgg() {
-      sendCmd("E"); // 发送 E → 播放小星星
-      document.getElementById("controlInfo").innerText = "🎵 Playing Twinkle Twinkle Little Star!";
-    }
-
-    function carHorn() {
-      sendCmd("H"); // 发送 H → 汽车鸣笛
-      document.getElementById("controlInfo").innerText = "📢 Car Horn Beep Beep!";
-    }
-    // ==============================================================
-
+    // 按键控制 - 支持触摸和鼠标
     document.querySelectorAll('.control-btn').forEach(btn => {
-        btn.addEventListener('contextmenu', (e) => { e.preventDefault(); });
-        btn.addEventListener('dragstart', (e) => { e.preventDefault(); });
-        btn.addEventListener('selectstart', (e) => { e.preventDefault(); });
+        // 阻止所有右键菜单和选择事件
+        btn.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            return false;
+        });
+        
+        // 阻止 dragstart 事件（防止拖拽图标）
+        btn.addEventListener('dragstart', (e) => {
+            e.preventDefault();
+            return false;
+        });
+        
+        // 阻止 selectstart 事件
+        btn.addEventListener('selectstart', (e) => {
+            e.preventDefault();
+            return false;
+        });
         
         btn.addEventListener('pointerdown', (e) => {
             e.preventDefault();
@@ -796,6 +825,7 @@
             updateControlInfo('S');
         });
         
+        // 触摸端额外处理
         btn.addEventListener('touchstart', (e) => {
             e.preventDefault();
             btn.classList.add('pressed');
