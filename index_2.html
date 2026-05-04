@@ -10,6 +10,7 @@
             padding: 0; 
             box-sizing: border-box; 
             font-family: 'Arial', sans-serif; 
+        }
         
         /* 彻底禁止所有选中 */
         body, button, div, span, .control-btn, .mode-btn {
@@ -474,24 +475,24 @@
     }
 
     // 切换漫游：停止 / 继续
-function toggleWander() {
-    const btn = document.getElementById("toggleBtn");
-    const txt = document.getElementById("wanderingText");
-    
-    // 无论启动还是停止，都发送 M
-    sendCmd('M');
-    
-    // UI 立即更新（实际状态会由 STM32 回调返回，但这里先乐观更新）
-    if (isWandering) {
-        btn.textContent = "▶️ Start Wandering";
-        txt.innerHTML = `🛑 ${petName} the ${petType} has stopped wandering`;
-        isWandering = false;
-    } else {
-        btn.textContent = "🛑 Stop Wandering";
-        txt.innerHTML = `🌿 ${petName} the ${petType} is wandering around...`;
-        isWandering = true;
+    function toggleWander() {
+        const btn = document.getElementById("toggleBtn");
+        const txt = document.getElementById("wanderingText");
+
+        if (isWandering) {
+            // 停止
+            sendCmd('S');
+            btn.textContent = "▶️ Resume Wandering";
+            txt.innerHTML = `🛑 ${petName} the ${petType} has <strong>stopped wandering</strong>`;
+            isWandering = false;
+        } else {
+            // 继续漫游
+            sendCmd('M');
+            btn.textContent = "🛑 Stop Wandering";
+            txt.innerHTML = `🌿 ${petName} the ${petType} is currently <strong>wandering around</strong>...`;
+            isWandering = true;
+        }
     }
-}
 
     // 回到Pet菜单
     function backToPetMenu() {
