@@ -266,12 +266,11 @@
 
 
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Digipet Smart Car</title>
     <style>
         * { 
@@ -280,6 +279,24 @@
             box-sizing: border-box; 
             font-family: 'Arial', sans-serif; 
         }
+        
+        /* 彻底禁止所有选中 */
+        body, button, div, span, .control-btn, .mode-btn {
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+        
+        /* 禁止图片和 emoji 被选中 */
+        img, svg, .emoji, button span, button::before, button::after {
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
         body { 
             background: #f2f2f7; 
             display: flex; 
@@ -323,26 +340,6 @@
             transition: 0.2s;
         }
         .connect-btn:active { transform: scale(0.96); }
-
-        /* 二维码区域 */
-        .qrcode-area {
-            margin-top: 20px;
-            padding: 15px;
-            background: #f9f9fb;
-            border-radius: 16px;
-            text-align: center;
-            display: none;
-        }
-        .qrcode-area img {
-            width: 180px;
-            height: 180px;
-            margin: 10px auto;
-        }
-        .qrcode-area p {
-            color: #8e8e93;
-            font-size: 13px;
-            margin-top: 8px;
-        }
 
         /* 右上角设置按钮 */
         .settings-icon {
@@ -414,9 +411,14 @@
             border: none; 
             background: #1c1c1e; 
             color: white; 
-            font-size: 17px; 
+            font-size: 28px; 
             font-weight: 600; 
             transition: 0.15s; 
+            cursor: pointer;
+            touch-action: manipulation;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .control-btn.pressed { 
             background: #007aff !important; 
@@ -490,6 +492,11 @@
             background: #ff3b30 !important;
             margin-top: 16px;
         }
+        
+        /* 防止任何拖拽选中 */
+        button, div, span {
+            -webkit-touch-callout: none;
+        }
     </style>
 </head>
 <body>
@@ -502,12 +509,6 @@
 
         <button class="connect-btn" id="connectBtn" onclick="startBLE()">Connect BLE</button>
 
-        <!-- 二维码区域 -->
-        <div class="qrcode-area" id="qrcodeArea">
-            <img id="qrcodeImg" src="https://monsterlitpow3.github.io/30_Project/qrcode.png" alt="QR Code">
-            <p>Scan to control remotely</p>
-        </div>
-
         <!-- 主菜单 -->
         <div class="mode-select" id="modeSelect">
             <button class="mode-btn" onclick="enterController()">🎮 Controller Mode</button>
@@ -519,16 +520,20 @@
         <div class="control-panel" id="controls">
             <div class="control-info" id="controlInfo">🎮 Ready to control</div>
             <div class="btn-grid">
-                <div class="row"><button class="control-btn" data-cmd="F">▲ F</button></div>
                 <div class="row">
-                    <button class="control-btn" data-cmd="L">◀ L</button>
-                    <button class="control-btn stop-btn" data-cmd="S">● S</button>
-                    <button class="control-btn" data-cmd="R">R ▶</button>
+                    <button class="control-btn" data-cmd="F">▲</button>
                 </div>
-                <div class="row"><button class="control-btn" data-cmd="B">▼ B</button></div>
                 <div class="row">
-                    <button class="control-btn" data-cmd="A">A ↺</button>
-                    <button class="control-btn" data-cmd="C">C ↻</button>
+                    <button class="control-btn" data-cmd="L">◀</button>
+                    <button class="control-btn stop-btn" data-cmd="S">●</button>
+                    <button class="control-btn" data-cmd="R">▶</button>
+                </div>
+                <div class="row">
+                    <button class="control-btn" data-cmd="B">▼</button>
+                </div>
+                <div class="row">
+                    <button class="control-btn" data-cmd="A">↺</button>
+                    <button class="control-btn" data-cmd="C">↻</button>
                 </div>
             </div>
             <button class="mode-btn back-btn" onclick="exitToMenu()">Back to Menu</button>
@@ -667,7 +672,6 @@
             document.getElementById('status').style.color = '#007aff';
             document.getElementById('connectBtn').style.display = 'none';
             document.getElementById('settingsBtn').style.display = 'flex';
-            document.getElementById('qrcodeArea').style.display = 'none';  // 隐藏二维码
             
             loadProfile();
             showSetup(); // 连接成功 → 自动弹出设置
@@ -695,7 +699,6 @@
         document.getElementById('status').style.color = '#ff3b30';
         document.getElementById('connectBtn').style.display = 'block';
         document.getElementById('settingsBtn').style.display = 'none';
-        document.getElementById('qrcodeArea').style.display = 'block';  // 显示二维码
         
         closeAllPanels();
     }
@@ -786,18 +789,52 @@
 
     // 按键控制 - 支持触摸和鼠标
     document.querySelectorAll('.control-btn').forEach(btn => {
+        // 阻止所有右键菜单和选择事件
+        btn.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            return false;
+        });
+        
+        // 阻止 dragstart 事件（防止拖拽图标）
+        btn.addEventListener('dragstart', (e) => {
+            e.preventDefault();
+            return false;
+        });
+        
+        // 阻止 selectstart 事件
+        btn.addEventListener('selectstart', (e) => {
+            e.preventDefault();
+            return false;
+        });
+        
         btn.addEventListener('pointerdown', (e) => {
             e.preventDefault();
             btn.classList.add('pressed');
             sendCmd(btn.dataset.cmd);
         });
+        
         btn.addEventListener('pointerup', (e) => {
             e.preventDefault();
             btn.classList.remove('pressed');
             sendCmd('S');
             updateControlInfo('S');
         });
+        
         btn.addEventListener('pointerleave', (e) => {
+            btn.classList.remove('pressed');
+            sendCmd('S');
+            updateControlInfo('S');
+        });
+        
+        // 触摸端额外处理
+        btn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            btn.classList.add('pressed');
+            sendCmd(btn.dataset.cmd);
+        });
+        
+        btn.addEventListener('touchend', (e) => {
+            e.preventDefault();
             btn.classList.remove('pressed');
             sendCmd('S');
             updateControlInfo('S');
