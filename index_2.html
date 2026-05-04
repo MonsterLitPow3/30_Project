@@ -267,7 +267,6 @@
 
 
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -308,7 +307,6 @@
         #status { 
             font-size: 15px; 
             font-weight: 600; 
-            color: #ff3b30; 
             margin-bottom: 24px; 
         }
         .connect-btn { 
@@ -325,6 +323,26 @@
             transition: 0.2s;
         }
         .connect-btn:active { transform: scale(0.96); }
+
+        /* 二维码区域 */
+        .qrcode-area {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9fb;
+            border-radius: 16px;
+            text-align: center;
+            display: none;
+        }
+        .qrcode-area img {
+            width: 180px;
+            height: 180px;
+            margin: 10px auto;
+        }
+        .qrcode-area p {
+            color: #8e8e93;
+            font-size: 13px;
+            margin-top: 8px;
+        }
 
         /* 右上角设置按钮 */
         .settings-icon {
@@ -345,9 +363,21 @@
 
         /* 所有面板默认隐藏 */
         .mode-select, .control-panel, .pet-main-panel, 
-        .nbm-active-panel, .setup-panel { 
+        .nbm-active-panel, .setup-panel, .control-info { 
             display: none; 
             margin-top: 16px; 
+        }
+
+        /* 控制信息显示区域 */
+        .control-info {
+            background: #e8f0fe;
+            padding: 12px;
+            border-radius: 12px;
+            color: #1c1c1e;
+            font-size: 15px;
+            font-weight: 500;
+            text-align: center;
+            word-break: break-word;
         }
 
         /* 按钮样式 */
@@ -456,6 +486,10 @@
             cursor: pointer;
             margin-top: 10px;
         }
+        .disconnect-btn {
+            background: #ff3b30 !important;
+            margin-top: 16px;
+        }
     </style>
 </head>
 <body>
@@ -464,33 +498,41 @@
         <div class="settings-icon" id="settingsBtn" onclick="showSetup()">⚙️</div>
 
         <h1 class="title">Digipet Car</h1>
-        <div id="status">Disconnected</div>
+        <div id="status" style="color: #ff3b30;">Disconnected</div>
 
         <button class="connect-btn" id="connectBtn" onclick="startBLE()">Connect BLE</button>
+
+        <!-- 二维码区域 -->
+        <div class="qrcode-area" id="qrcodeArea">
+            <img id="qrcodeImg" src="https://monsterlitpow3.github.io/30_Project/qrcode.png" alt="QR Code">
+            <p>Scan to control remotely</p>
+        </div>
 
         <!-- 主菜单 -->
         <div class="mode-select" id="modeSelect">
             <button class="mode-btn" onclick="enterController()">🎮 Controller Mode</button>
             <button class="mode-btn" onclick="enterPetMain()">🐾 Pet Mode</button>
+            <button class="mode-btn disconnect-btn" onclick="disconnectBLE()">🔌 Disconnect</button>
         </div>
 
         <!-- 手动控制 -->
         <div class="control-panel" id="controls">
-            <div class="status-text" id="controlStatus">Loading...</div>
+            <div class="control-info" id="controlInfo">🎮 Ready to control</div>
             <div class="btn-grid">
-                <div class="row"><button class="control-btn" data-cmd="F">F</button></div>
+                <div class="row"><button class="control-btn" data-cmd="F">▲ F</button></div>
                 <div class="row">
-                    <button class="control-btn" data-cmd="L">L</button>
-                    <button class="control-btn stop-btn" data-cmd="S">S</button>
-                    <button class="control-btn" data-cmd="R">R</button>
+                    <button class="control-btn" data-cmd="L">◀ L</button>
+                    <button class="control-btn stop-btn" data-cmd="S">● S</button>
+                    <button class="control-btn" data-cmd="R">R ▶</button>
                 </div>
-                <div class="row"><button class="control-btn" data-cmd="B">B</button></div>
+                <div class="row"><button class="control-btn" data-cmd="B">▼ B</button></div>
                 <div class="row">
-                    <button class="control-btn" data-cmd="A">A</button>
-                    <button class="control-btn" data-cmd="C">C</button>
+                    <button class="control-btn" data-cmd="A">A ↺</button>
+                    <button class="control-btn" data-cmd="C">C ↻</button>
                 </div>
             </div>
             <button class="mode-btn back-btn" onclick="exitToMenu()">Back to Menu</button>
+            <button class="mode-btn disconnect-btn" onclick="disconnectBLE()">Disconnect</button>
         </div>
 
         <!-- Pet Mode 二级菜单 -->
@@ -498,6 +540,7 @@
             <button class="mode-btn" onclick="startNBM()">🌿 Natural Behaviour Mode</button>
             <button class="mode-btn" onclick="startSpotting()">👁 Spotting Mode</button>
             <button class="mode-btn back-btn" onclick="exitToMenu()">Back to Main Menu</button>
+            <button class="mode-btn disconnect-btn" onclick="disconnectBLE()">Disconnect</button>
         </div>
 
         <!-- Natural Behaviour 运行界面 -->
@@ -505,6 +548,7 @@
             <div class="status-text" id="wanderingText">Your pet is wandering...</div>
             <button class="mode-btn" id="toggleBtn" onclick="toggleWander()">🛑 Stop Wandering</button>
             <button class="mode-btn back-btn" onclick="backToPetMenu()">Back to Pet Menu</button>
+            <button class="mode-btn disconnect-btn" onclick="disconnectBLE()">Disconnect</button>
         </div>
 
         <!-- 宠物设置页面 -->
@@ -530,9 +574,22 @@
 
 <script>
     let characteristic = null;
+    let device = null;
     let petName = "My Pet";
     let petType = "Friend";
-    let isWandering = false; // 漫游状态
+    let isWandering = false;
+    let currentDirection = "";
+
+    // 方向名称映射
+    const directionMap = {
+        'F': 'Forward',
+        'B': 'Backward',
+        'L': 'Left',
+        'R': 'Right',
+        'C': 'Clockwise',
+        'A': 'Anti-clockwise',
+        'S': 'Stopped'
+    };
 
     // 本地存储读取
     function loadProfile() {
@@ -540,6 +597,8 @@
         let t = localStorage.getItem("petType");
         if(n) petName = n;
         if(t) petType = t;
+        document.getElementById("petName").value = petName;
+        document.getElementById("petType").value = petType;
     }
 
     // 保存宠物资料
@@ -568,13 +627,27 @@
         document.getElementById("setupPanel").style.display = "none";
     }
 
+    // 更新控制信息显示
+    function updateControlInfo(direction) {
+        currentDirection = direction;
+        const infoDiv = document.getElementById("controlInfo");
+        if (direction === 'S') {
+            infoDiv.innerHTML = `🐾 ${petName} the ${petType} is now <strong>STOPPED</strong>`;
+        } else if (directionMap[direction]) {
+            infoDiv.innerHTML = `🚗 ${petName} the ${petType} is now moving <strong>${directionMap[direction]}</strong>`;
+        }
+    }
+
     // BLE 连接
     async function startBLE() {
         try {
-            const device = await navigator.bluetooth.requestDevice({
+            device = await navigator.bluetooth.requestDevice({
                 filters: [{ name: 'CAR_CONTROL' }],
                 optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb']
             });
+            
+            device.addEventListener('gattserverdisconnected', onDisconnected);
+            
             const server = await device.gatt.connect();
             const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
             characteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
@@ -589,11 +662,13 @@
                 }
             });
 
+            // 更新UI - 连接成功
             document.getElementById('status').innerText = 'Connected';
             document.getElementById('status').style.color = '#007aff';
             document.getElementById('connectBtn').style.display = 'none';
             document.getElementById('settingsBtn').style.display = 'flex';
-
+            document.getElementById('qrcodeArea').style.display = 'none';  // 隐藏二维码
+            
             loadProfile();
             showSetup(); // 连接成功 → 自动弹出设置
         } catch (e) {
@@ -601,18 +676,46 @@
         }
     }
 
+    // 断开连接
+    async function disconnectBLE() {
+        if (device && device.gatt.connected) {
+            device.gatt.disconnect();
+        }
+        onDisconnected();
+    }
+
+    // 断开连接回调
+    function onDisconnected() {
+        characteristic = null;
+        device = null;
+        isWandering = false;
+        
+        // 更新UI - 断开连接
+        document.getElementById('status').innerText = 'Disconnected';
+        document.getElementById('status').style.color = '#ff3b30';
+        document.getElementById('connectBtn').style.display = 'block';
+        document.getElementById('settingsBtn').style.display = 'none';
+        document.getElementById('qrcodeArea').style.display = 'block';  // 显示二维码
+        
+        closeAllPanels();
+    }
+
     // 发送指令
     function sendCmd(cmd) {
         if(!characteristic) return;
         characteristic.writeValue(new TextEncoder().encode(cmd)).catch(err => {});
+        
+        // 更新控制界面显示
+        if (document.getElementById('controls').style.display === 'block') {
+            updateControlInfo(cmd);
+        }
     }
 
     // 进入手动模式
     function enterController() {
         closeAllPanels();
         document.getElementById('controls').style.display = 'block';
-        document.getElementById('controlStatus').innerText = 
-            `🎮 ${petName} the ${petType} is being controlled`;
+        updateControlInfo('S');
         sendCmd('S');
     }
 
@@ -620,6 +723,7 @@
     function enterPetMain() {
         closeAllPanels();
         document.getElementById('petMainPanel').style.display = 'block';
+        sendCmd('S');
     }
 
     // 启动仿生模式
@@ -629,8 +733,8 @@
         
         isWandering = true;
         document.getElementById("toggleBtn").textContent = "🛑 Stop Wandering";
-        document.getElementById('wanderingText').innerText = 
-            `🌿 ${petName} the ${petType} is currently wandering...`;
+        document.getElementById('wanderingText').innerHTML = 
+            `🌿 ${petName} the ${petType} is currently <strong>wandering around</strong>...`;
         
         sendCmd('M');
     }
@@ -644,13 +748,13 @@
             // 停止
             sendCmd('S');
             btn.textContent = "▶️ Resume Wandering";
-            txt.textContent = `🛑 ${petName} has stopped wandering`;
+            txt.innerHTML = `🛑 ${petName} the ${petType} has <strong>stopped wandering</strong>`;
             isWandering = false;
         } else {
             // 继续漫游
             sendCmd('M');
             btn.textContent = "🛑 Stop Wandering";
-            txt.textContent = `🌿 ${petName} the ${petType} is currently wandering...`;
+            txt.innerHTML = `🌿 ${petName} the ${petType} is currently <strong>wandering around</strong>...`;
             isWandering = true;
         }
     }
@@ -665,9 +769,11 @@
 
     // 信号追踪模式
     function startSpotting() {
+        alert("👁 Spotting Mode - Follow the strongest signal!\n" + 
+               `${petName} the ${petType} is tracking you!`);
+        sendCmd('T');  // 发送追踪命令给STM32
         closeAllPanels();
         document.getElementById('petMainPanel').style.display = 'block';
-        alert("👁 Spotting Mode (Ready for your logic)");
     }
 
     // 返回主菜单
@@ -678,18 +784,23 @@
         document.getElementById("modeSelect").style.display = "block";
     }
 
-    // 按键控制
+    // 按键控制 - 支持触摸和鼠标
     document.querySelectorAll('.control-btn').forEach(btn => {
-        btn.addEventListener('pointerdown', () => {
+        btn.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
             btn.classList.add('pressed');
             sendCmd(btn.dataset.cmd);
         });
-        btn.addEventListener('pointerup', () => {
+        btn.addEventListener('pointerup', (e) => {
+            e.preventDefault();
             btn.classList.remove('pressed');
             sendCmd('S');
+            updateControlInfo('S');
         });
-        btn.addEventListener('pointerleave', () => {
+        btn.addEventListener('pointerleave', (e) => {
             btn.classList.remove('pressed');
+            sendCmd('S');
+            updateControlInfo('S');
         });
     });
 </script>
