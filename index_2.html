@@ -481,7 +481,7 @@
     
     if (isWandering) {
         // 停止 - 发送 S 停止电机
-        sendCmd('S');
+        sendCmd('M');
         btn.textContent = "▶️ Resume Wandering";
         txt.innerHTML = `🛑 ${petName} the ${petType} has <strong>stopped wandering</strong>`;
         isWandering = false;
