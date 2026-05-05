@@ -475,25 +475,24 @@
     }
 
     // 切换漫游：停止 / 继续
-    function toggleWander() {
-        const btn = document.getElementById("toggleBtn");
-        const txt = document.getElementById("wanderingText");
-
-        if (isWandering) {
-            // 停止
-            sendCmd('S');
-            btn.textContent = "▶️ Resume Wandering";
-            txt.innerHTML = `🛑 ${petName} the ${petType} has <strong>stopped wandering</strong>`;
-            isWandering = false;
-        } else {
-            // 继续漫游
-            sendCmd('M');
-            btn.textContent = "🛑 Stop Wandering";
-            txt.innerHTML = `🌿 ${petName} the ${petType} is currently <strong>wandering around</strong>...`;
-            isWandering = true;
-        }
+   function toggleWander() {
+    const btn = document.getElementById("toggleBtn");
+    const txt = document.getElementById("wanderingText");
+    
+    if (isWandering) {
+        // 停止 - 发送 S 停止电机
+        sendCmd('S');
+        btn.textContent = "▶️ Resume Wandering";
+        txt.innerHTML = `🛑 ${petName} the ${petType} has <strong>stopped wandering</strong>`;
+        isWandering = false;
+    } else {
+        // 继续漫游 - 发送 M 启动 NBM 模式
+        sendCmd('M');
+        btn.textContent = "🛑 Stop Wandering";
+        txt.innerHTML = `🌿 ${petName} the ${petType} is currently <strong>wandering around</strong>...`;
+        isWandering = true;
     }
-
+}
     // 回到Pet菜单
     function backToPetMenu() {
         sendCmd('S');
