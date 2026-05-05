@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Digipet Smart Car</title>
+    <title>Digipet Smart Car - Spotting Mode</title>
     <style>
         * { 
             margin: 0; 
@@ -12,7 +12,6 @@
             font-family: 'Arial', sans-serif; 
         }
         
-        /* 彻底禁止所有选中 */
         body, button, div, span, .control-btn, .mode-btn {
             user-select: none;
             -webkit-user-select: none;
@@ -20,13 +19,6 @@
             -ms-user-select: none;
             -webkit-tap-highlight-color: transparent;
             -webkit-touch-callout: none;
-        }
-        
-        /* 禁止图片和 emoji 被选中 */
-        img, svg, .emoji, button span, button::before, button::after {
-            pointer-events: none;
-            user-select: none;
-            -webkit-user-select: none;
         }
         
         body { 
@@ -39,11 +31,11 @@
         }
         .container { 
             width: 100%; 
-            max-width: 380px; 
+            max-width: 420px; 
             background: #fff; 
             border-radius: 20px; 
             box-shadow: 0 8px 24px rgba(0,0,0,0.08); 
-            padding: 28px 22px; 
+            padding: 20px; 
             text-align: center; 
             position: relative;
         }
@@ -56,11 +48,11 @@
         #status { 
             font-size: 15px; 
             font-weight: 600; 
-            margin-bottom: 24px; 
+            margin-bottom: 15px; 
         }
         .connect-btn { 
             width: 100%; 
-            height: 54px; 
+            height: 50px; 
             border-radius: 14px; 
             border: none; 
             background: #007aff; 
@@ -68,16 +60,14 @@
             font-size: 17px; 
             font-weight: 600; 
             cursor: pointer; 
-            margin-bottom: 20px; 
-            transition: 0.2s;
+            margin-bottom: 15px; 
         }
         .connect-btn:active { transform: scale(0.96); }
 
-        /* 右上角设置按钮 */
         .settings-icon {
             position: absolute;
-            top: 22px;
-            right: 22px;
+            top: 18px;
+            right: 18px;
             width: 36px;
             height: 36px;
             background: #e5e5ea;
@@ -90,29 +80,84 @@
             display: none;
         }
 
-        /* 所有面板默认隐藏 */
         .mode-select, .control-panel, .pet-main-panel, 
-        .nbm-active-panel, .setup-panel, .control-info { 
+        .nbm-active-panel, .spotting-panel, .setup-panel, .control-info { 
             display: none; 
             margin-top: 16px; 
         }
 
-        /* 控制信息显示区域 */
+        /* 画板样式 */
+        .spotting-panel {
+            background: #f9f9fb;
+            padding: 16px;
+            border-radius: 16px;
+        }
+        .canvas-container {
+            background: white;
+            border-radius: 12px;
+            border: 2px solid #d1d1d6;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 10px;
+            cursor: crosshair;
+        }
+        .spotting-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .spotting-controls button {
+            flex: 1;
+            height: 48px;
+            border-radius: 12px;
+            border: none;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .clear-canvas-btn {
+            background: #ff9500;
+            color: white;
+        }
+        .animal-select {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .animal-btn {
+            width: 55px;
+            height: 55px;
+            border-radius: 30px;
+            border: 2px solid #d1d1d6;
+            background: white;
+            font-size: 28px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .animal-btn.active {
+            border-color: #007aff;
+            background: #e8f0fe;
+        }
+
         .control-info {
             background: #e8f0fe;
             padding: 12px;
             border-radius: 12px;
-            color: #1c1c1e;
-            font-size: 15px;
-            font-weight: 500;
-            text-align: center;
-            word-break: break-word;
+            font-size: 14px;
         }
 
-        /* 按钮样式 */
         .mode-btn { 
             width: 100%; 
-            height: 56px; 
+            height: 52px; 
             border-radius: 14px; 
             border: none; 
             background: #000; 
@@ -120,14 +165,12 @@
             font-size: 17px; 
             font-weight: 600; 
             cursor: pointer; 
-            margin: 9px 0; 
-            transition: 0.2s; 
+            margin: 8px 0; 
         }
         .mode-btn:active { transform: scale(0.96); }
         .back-btn { background: #8e8e93 !important; }
         .stop-btn { background: #ff3b30 !important; }
 
-        /* 操控按钮布局 */
         .btn-grid { 
             display: flex; 
             flex-direction: column; 
@@ -137,103 +180,72 @@
         }
         .row { display: flex; gap: 10px; }
         .control-btn { 
-            width: 74px; 
-            height: 74px; 
+            width: 70px; 
+            height: 70px; 
             border-radius: 16px; 
             border: none; 
             background: #1c1c1e; 
             color: white; 
-            font-size: 28px; 
-            font-weight: 600; 
-            transition: 0.15s; 
+            font-size: 26px; 
             cursor: pointer;
-            touch-action: manipulation;
             display: flex;
             align-items: center;
             justify-content: center;
         }
-        .control-btn.pressed { 
-            background: #007aff !important; 
-            transform: scale(0.93); 
-        }
+        .control-btn.pressed { background: #007aff !important; transform: scale(0.93); }
 
-        /* 宠物面板 */
-        .pet-main-panel, .nbm-active-panel { 
+        .pet-main-panel, .nbm-active-panel, .spotting-panel { 
             background: #f9f9fb; 
-            padding: 22px; 
+            padding: 18px; 
             border-radius: 16px; 
-            border: 1px solid #d1d1d6; 
-        }
-        .rssi-val { 
-            font-size: 34px; 
-            font-weight: 700; 
-            color: #007aff; 
-            margin: 12px 0; 
         }
         .status-text {
-            font-size: 15px;
+            font-size: 14px;
             color: #3a3a3c;
-            margin: 10px 0;
-            line-height: 1.4;
+            margin: 8px 0;
         }
-
-        /* 设置面板 */
         .setup-panel {
             background: #f9f9fb;
-            padding: 24px;
+            padding: 20px;
             border-radius: 16px;
             text-align: left;
         }
-        .setup-title {
-            font-size: 19px;
-            font-weight: 700;
-            margin-bottom: 18px;
-            text-align: center;
-        }
         .input-group {
-            margin-bottom: 18px;
+            margin-bottom: 15px;
         }
         .input-group label {
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 600;
-            color: #1c1c1e;
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
         .input-group input, .input-group select {
             width: 100%;
-            height: 48px;
+            height: 44px;
             border-radius: 10px;
             border: 1px solid #c7c7cc;
             padding: 0 12px;
-            font-size: 16px;
+            font-size: 15px;
         }
         .save-btn {
             width: 100%;
-            height: 50px;
+            height: 48px;
             border-radius: 12px;
             background: #007aff;
             color: white;
-            font-size: 17px;
+            font-size: 16px;
             font-weight: 600;
             border: none;
             cursor: pointer;
-            margin-top: 10px;
         }
         .disconnect-btn {
             background: #ff3b30 !important;
-            margin-top: 16px;
-        }
-        
-        /* 防止任何拖拽选中 */
-        button, div, span {
-            -webkit-touch-callout: none;
+            margin-top: 12px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- 右上角设置 -->
         <div class="settings-icon" id="settingsBtn" onclick="showSetup()">⚙️</div>
 
         <h1 class="title">Digipet Car</h1>
@@ -241,7 +253,6 @@
 
         <button class="connect-btn" id="connectBtn" onclick="startBLE()">Connect BLE</button>
 
-        <!-- 主菜单 -->
         <div class="mode-select" id="modeSelect">
             <button class="mode-btn" onclick="enterController()">🎮 Controller Mode</button>
             <button class="mode-btn" onclick="enterPetMain()">🐾 Pet Mode</button>
@@ -252,17 +263,13 @@
         <div class="control-panel" id="controls">
             <div class="control-info" id="controlInfo">🎮 Ready to control</div>
             <div class="btn-grid">
-                <div class="row">
-                    <button class="control-btn" data-cmd="F">▲</button>
-                </div>
+                <div class="row"><button class="control-btn" data-cmd="F">▲</button></div>
                 <div class="row">
                     <button class="control-btn" data-cmd="L">◀</button>
                     <button class="control-btn stop-btn" data-cmd="S">●</button>
                     <button class="control-btn" data-cmd="R">▶</button>
                 </div>
-                <div class="row">
-                    <button class="control-btn" data-cmd="B">▼</button>
-                </div>
+                <div class="row"><button class="control-btn" data-cmd="B">▼</button></div>
                 <div class="row">
                     <button class="control-btn" data-cmd="A">↺</button>
                     <button class="control-btn" data-cmd="C">↻</button>
@@ -275,7 +282,7 @@
         <!-- Pet Mode 二级菜单 -->
         <div class="pet-main-panel" id="petMainPanel">
             <button class="mode-btn" onclick="startNBM()">🌿 Natural Behaviour Mode</button>
-            <button class="mode-btn" onclick="startSpotting()">👁 Spotting Mode</button>
+            <button class="mode-btn" onclick="startSpotting()">🎨 Spotting Mode (Draw)</button>
             <button class="mode-btn back-btn" onclick="exitToMenu()">Back to Main Menu</button>
             <button class="mode-btn disconnect-btn" onclick="disconnectBLE()">Disconnect</button>
         </div>
@@ -285,6 +292,27 @@
             <div class="status-text" id="wanderingText">Your pet is wandering...</div>
             <button class="mode-btn" id="toggleBtn" onclick="toggleWander()">🛑 Stop Wandering</button>
             <button class="mode-btn back-btn" onclick="backToPetMenu()">Back to Pet Menu</button>
+            <button class="mode-btn disconnect-btn" onclick="disconnectBLE()">Disconnect</button>
+        </div>
+
+        <!-- Spotting Mode 绘图界面 -->
+        <div class="spotting-panel" id="spottingPanel">
+            <div class="animal-select">
+                <button class="animal-btn" data-animal="🐶">🐶</button>
+                <button class="animal-btn" data-animal="🐱">🐱</button>
+                <button class="animal-btn" data-animal="🐷">🐷</button>
+                <button class="animal-btn" data-animal="🐰">🐰</button>
+                <button class="animal-btn" data-animal="🐻">🐻</button>
+                <button class="animal-btn" data-animal="🐼">🐼</button>
+            </div>
+            <div class="canvas-container">
+                <canvas id="pathCanvas" width="350" height="350" style="width:350px;height:350px"></canvas>
+            </div>
+            <div class="spotting-controls">
+                <button class="clear-canvas-btn" onclick="clearCanvas()">🗑 Clear Path</button>
+                <button class="back-btn" onclick="backToPetMenu()">Back</button>
+            </div>
+            <div class="control-info" id="spottingInfo">🎨 Pet is drawing its journey...</div>
             <button class="mode-btn disconnect-btn" onclick="disconnectBLE()">Disconnect</button>
         </div>
 
@@ -298,11 +326,8 @@
             <div class="input-group">
                 <label>Pet Type</label>
                 <select id="petType">
-                    <option>Dog</option>
-                    <option>Cat</option>
-                    <option>Pig</option>
-                    <option>Rabbit</option>
-                    <option>Bear</option>
+                    <option>Dog</option><option>Cat</option><option>Pig</option>
+                    <option>Rabbit</option><option>Bear</option>
                 </select>
             </div>
             <button class="save-btn" onclick="savePetProfile()">Save & Continue</button>
@@ -315,260 +340,342 @@
     let petName = "My Pet";
     let petType = "Friend";
     let isWandering = false;
+    let isSpotting = false;
     let currentDirection = "";
-
-    // 方向名称映射
+    
+    // 画板相关
+    let canvas, ctx;
+    let canvasWidth = 350, canvasHeight = 350;
+    let currentX = canvasWidth / 2, currentY = canvasHeight / 2;
+    let currentAnimal = "🐶";
+    let pathPoints = [{x: currentX, y: currentY}];
+    
+    // 方向映射
     const directionMap = {
-        'F': 'Forward',
-        'B': 'Backward',
-        'L': 'Left',
-        'R': 'Right',
-        'C': 'Clockwise',
-        'A': 'Anti-clockwise',
-        'S': 'Stopped'
+        'F': 'Forward', 'B': 'Backward', 'L': 'Left', 'R': 'Right',
+        'C': 'Clockwise', 'A': 'Anti-clockwise', 'S': 'Stopped'
     };
+    
+    // 移动步长（像素）
+    const STEP_SIZE = 8;
 
-    // 本地存储读取
+    function initCanvas() {
+        canvas = document.getElementById('pathCanvas');
+        ctx = canvas.getContext('2d');
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+        drawCanvas();
+    }
+    
+    function drawCanvas() {
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+        
+        // 绘制网格背景
+        ctx.strokeStyle = "#e0e0e0";
+        ctx.lineWidth = 0.5;
+        for (let i = 0; i < canvasWidth; i += 25) {
+            ctx.beginPath();
+            ctx.moveTo(i, 0);
+            ctx.lineTo(i, canvasHeight);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(0, i);
+            ctx.lineTo(canvasWidth, i);
+            ctx.stroke();
+        }
+        
+        // 绘制走过的路径
+        if (pathPoints.length > 1) {
+            ctx.beginPath();
+            ctx.strokeStyle = "#007aff";
+            ctx.lineWidth = 3;
+            ctx.lineCap = "round";
+            ctx.moveTo(pathPoints[0].x, pathPoints[0].y);
+            for (let i = 1; i < pathPoints.length; i++) {
+                ctx.lineTo(pathPoints[i].x, pathPoints[i].y);
+            }
+            ctx.stroke();
+        }
+        
+        // 绘制动物头像（当前位置）
+        ctx.font = `${Math.floor(canvasWidth / 6)}px "Segoe UI Emoji"`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#1c1c1e";
+        ctx.fillText(currentAnimal, currentX, currentY);
+        
+        // 添加光晕效果
+        ctx.shadowBlur = 0;
+    }
+    
+    function updatePosition(direction) {
+        let newX = currentX;
+        let newY = currentY;
+        
+        switch(direction) {
+            case 'F': newY -= STEP_SIZE; break;  // 上
+            case 'B': newY += STEP_SIZE; break;  // 下
+            case 'L': newX -= STEP_SIZE; break;  // 左
+            case 'R': newX += STEP_SIZE; break;  // 右
+            case 'C': break;  // 顺时针 - 位置不变
+            case 'A': break;  // 逆时针 - 位置不变
+            default: return false;
+        }
+        
+        // 边界限制（留出边缘空间）
+        newX = Math.min(Math.max(newX, 20), canvasWidth - 20);
+        newY = Math.min(Math.max(newY, 20), canvasHeight - 20);
+        
+        if (newX !== currentX || newY !== currentY) {
+            currentX = newX;
+            currentY = newY;
+            pathPoints.push({x: currentX, y: currentY});
+            drawCanvas();
+            
+            // 更新信息显示
+            const infoDiv = document.getElementById("spottingInfo");
+            if (infoDiv) {
+                infoDiv.innerHTML = `🎨 ${petName} is drawing! Position: (${Math.round(currentX)}, ${Math.round(currentY)}) | Steps: ${pathPoints.length}`;
+            }
+            return true;
+        }
+        return false;
+    }
+    
+    function clearCanvas() {
+        pathPoints = [{x: canvasWidth / 2, y: canvasHeight / 2}];
+        currentX = canvasWidth / 2;
+        currentY = canvasHeight / 2;
+        drawCanvas();
+        const infoDiv = document.getElementById("spottingInfo");
+        if (infoDiv) infoDiv.innerHTML = `🎨 Canvas cleared! ${petName} starting fresh...`;
+    }
+    
     function loadProfile() {
         let n = localStorage.getItem("petName");
         let t = localStorage.getItem("petType");
+        let a = localStorage.getItem("selectedAnimal");
         if(n) petName = n;
         if(t) petType = t;
+        if(a) currentAnimal = a;
         document.getElementById("petName").value = petName;
         document.getElementById("petType").value = petType;
+        
+        // 高亮选中的动物
+        document.querySelectorAll('.animal-btn').forEach(btn => {
+            if (btn.dataset.animal === currentAnimal) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
     }
-
-    // 保存宠物资料
+    
     function savePetProfile() {
         petName = document.getElementById("petName").value || "Buddy";
         petType = document.getElementById("petType").value;
         localStorage.setItem("petName", petName);
         localStorage.setItem("petType", petType);
-        
         closeAllPanels();
         document.getElementById("modeSelect").style.display = "block";
     }
-
-    // 显示设置
+    
     function showSetup() {
         closeAllPanels();
         document.getElementById("setupPanel").style.display = "block";
     }
-
-    // 关闭所有面板
+    
     function closeAllPanels() {
         document.getElementById("modeSelect").style.display = "none";
         document.getElementById("controls").style.display = "none";
         document.getElementById("petMainPanel").style.display = "none";
         document.getElementById("nbmPanel").style.display = "none";
+        document.getElementById("spottingPanel").style.display = "none";
         document.getElementById("setupPanel").style.display = "none";
     }
-
-    // 更新控制信息显示
-    function updateControlInfo(direction) {
-        currentDirection = direction;
-        const infoDiv = document.getElementById("controlInfo");
-        if (direction === 'S') {
-            infoDiv.innerHTML = `🐾 ${petName} the ${petType} is now <strong>STOPPED</strong>`;
-        } else if (directionMap[direction]) {
-            infoDiv.innerHTML = `🚗 ${petName} the ${petType} is now moving <strong>${directionMap[direction]}</strong>`;
-        }
-    }
-
-    // BLE 连接
+    
     async function startBLE() {
         try {
             device = await navigator.bluetooth.requestDevice({
                 filters: [{ name: 'CAR_CONTROL' }],
                 optionalServices: ['0000ffe0-0000-1000-8000-00805f9b34fb']
             });
-            
             device.addEventListener('gattserverdisconnected', onDisconnected);
-            
             const server = await device.gatt.connect();
             const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
             characteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
-
             characteristic.startNotifications();
             characteristic.addEventListener('characteristicvaluechanged', (e) => {
                 let val = new TextDecoder().decode(e.target.value);
-                if(val.startsWith('R')){
-                    if(document.getElementById('rssiDisplay')) {
-                        document.getElementById('rssiDisplay').innerText = val.substring(1);
-                    }
-                }
+                // 接收位置数据（可选）
             });
-
-            // 更新UI - 连接成功
             document.getElementById('status').innerText = 'Connected';
             document.getElementById('status').style.color = '#007aff';
             document.getElementById('connectBtn').style.display = 'none';
             document.getElementById('settingsBtn').style.display = 'flex';
-            
             loadProfile();
-            showSetup(); // 连接成功 → 自动弹出设置
+            showSetup();
         } catch (e) {
             alert('Connection failed: ' + e.message);
         }
     }
-
-    // 断开连接
+    
     async function disconnectBLE() {
-        if (device && device.gatt.connected) {
-            device.gatt.disconnect();
-        }
+        if (device && device.gatt.connected) device.gatt.disconnect();
         onDisconnected();
     }
-
-    // 断开连接回调
+    
     function onDisconnected() {
         characteristic = null;
         device = null;
         isWandering = false;
-        
-        // 更新UI - 断开连接
+        isSpotting = false;
         document.getElementById('status').innerText = 'Disconnected';
         document.getElementById('status').style.color = '#ff3b30';
         document.getElementById('connectBtn').style.display = 'block';
         document.getElementById('settingsBtn').style.display = 'none';
-        
         closeAllPanels();
     }
-
-    // 发送指令
+    
     function sendCmd(cmd) {
         if(!characteristic) return;
         characteristic.writeValue(new TextEncoder().encode(cmd)).catch(err => {});
         
-        // 更新控制界面显示
+        // 如果在 Spotting 模式，更新画板位置
+        if (isSpotting && (cmd === 'F' || cmd === 'B' || cmd === 'L' || cmd === 'R')) {
+            updatePosition(cmd);
+        }
+        
         if (document.getElementById('controls').style.display === 'block') {
-            updateControlInfo(cmd);
+            const infoDiv = document.getElementById("controlInfo");
+            if (cmd === 'S') {
+                infoDiv.innerHTML = `🐾 ${petName} the ${petType} is now STOPPED`;
+            } else if (directionMap[cmd]) {
+                infoDiv.innerHTML = `🚗 ${petName} is moving ${directionMap[cmd]}`;
+            }
         }
     }
-
-    // 进入手动模式
+    
     function enterController() {
+        if (isSpotting) {
+            isSpotting = false;
+            sendCmd('M');
+        }
         closeAllPanels();
         document.getElementById('controls').style.display = 'block';
-        updateControlInfo('S');
         sendCmd('S');
     }
-
-    // 进入 Pet 主菜单
+    
     function enterPetMain() {
+        if (isSpotting) {
+            isSpotting = false;
+            sendCmd('M');
+        }
         closeAllPanels();
         document.getElementById('petMainPanel').style.display = 'block';
         sendCmd('S');
     }
-
-    // 启动仿生模式
+    
     function startNBM() {
+        if (isSpotting) isSpotting = false;
         closeAllPanels();
         document.getElementById('nbmPanel').style.display = 'block';
-        
         isWandering = true;
         document.getElementById("toggleBtn").textContent = "🛑 Stop Wandering";
-        document.getElementById('wanderingText').innerHTML = 
-            `🌿 ${petName} the ${petType} is currently <strong>wandering around</strong>...`;
-        
+        document.getElementById('wanderingText').innerHTML = `🌿 ${petName} the ${petType} is currently <strong>wandering around</strong>...`;
         sendCmd('M');
     }
-
-    // 切换漫游：停止 / 继续
-   function toggleWander() {
-    const btn = document.getElementById("toggleBtn");
-    const txt = document.getElementById("wanderingText");
     
-    if (isWandering) {
-        // 停止 - 发送 S 停止电机
-        sendCmd('M');
-        btn.textContent = "▶️ Resume Wandering";
-        txt.innerHTML = `🛑 ${petName} the ${petType} has <strong>stopped wandering</strong>`;
-        isWandering = false;
-    } else {
-        // 继续漫游 - 发送 M 启动 NBM 模式
-        sendCmd('M');
-        btn.textContent = "🛑 Stop Wandering";
-        txt.innerHTML = `🌿 ${petName} the ${petType} is currently <strong>wandering around</strong>...`;
-        isWandering = true;
+    function toggleWander() {
+        const btn = document.getElementById("toggleBtn");
+        const txt = document.getElementById("wanderingText");
+        if (isWandering) {
+            sendCmd('S');
+            btn.textContent = "▶️ Resume Wandering";
+            txt.innerHTML = `🛑 ${petName} the ${petType} has stopped wandering`;
+            isWandering = false;
+        } else {
+            sendCmd('M');
+            btn.textContent = "🛑 Stop Wandering";
+            txt.innerHTML = `🌿 ${petName} the ${petType} is currently wandering around...`;
+            isWandering = true;
+        }
     }
-}
-    // 回到Pet菜单
+    
+    function startSpotting() {
+        closeAllPanels();
+        document.getElementById('spottingPanel').style.display = 'block';
+        initCanvas();
+        isSpotting = true;
+        isWandering = false;
+        
+        // 重置画板位置
+        pathPoints = [{x: canvasWidth / 2, y: canvasHeight / 2}];
+        currentX = canvasWidth / 2;
+        currentY = canvasHeight / 2;
+        drawCanvas();
+        
+        document.getElementById('spottingInfo').innerHTML = `🎨 ${petName} the ${petType} is drawing its journey!`;
+        sendCmd('S');  // 先停止
+        sendCmd('M');  // 启动漫游模式（使用相同的随机行走逻辑）
+    }
+    
     function backToPetMenu() {
         sendCmd('S');
         isWandering = false;
+        isSpotting = false;
         closeAllPanels();
         document.getElementById('petMainPanel').style.display = 'block';
     }
-
-    // 信号追踪模式
-    function startSpotting() {
-        alert("👁 Spotting Mode - Follow the strongest signal!\n" + 
-               `${petName} the ${petType} is tracking you!`);
-        sendCmd('T');  // 发送追踪命令给STM32
-        closeAllPanels();
-        document.getElementById('petMainPanel').style.display = 'block';
-    }
-
-    // 返回主菜单
+    
     function exitToMenu() {
         sendCmd('S');
         isWandering = false;
+        isSpotting = false;
         closeAllPanels();
         document.getElementById("modeSelect").style.display = "block";
     }
-
-    // 按键控制 - 支持触摸和鼠标
+    
+    // 动物选择
+    document.querySelectorAll('.animal-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentAnimal = btn.dataset.animal;
+            localStorage.setItem("selectedAnimal", currentAnimal);
+            document.querySelectorAll('.animal-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            drawCanvas();
+        });
+    });
+    
+    // 控制按钮
     document.querySelectorAll('.control-btn').forEach(btn => {
-        // 阻止所有右键菜单和选择事件
-        btn.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            return false;
-        });
-        
-        // 阻止 dragstart 事件（防止拖拽图标）
-        btn.addEventListener('dragstart', (e) => {
-            e.preventDefault();
-            return false;
-        });
-        
-        // 阻止 selectstart 事件
-        btn.addEventListener('selectstart', (e) => {
-            e.preventDefault();
-            return false;
-        });
-        
+        btn.addEventListener('contextmenu', (e) => e.preventDefault());
+        btn.addEventListener('dragstart', (e) => e.preventDefault());
+        btn.addEventListener('selectstart', (e) => e.preventDefault());
         btn.addEventListener('pointerdown', (e) => {
             e.preventDefault();
             btn.classList.add('pressed');
             sendCmd(btn.dataset.cmd);
         });
-        
         btn.addEventListener('pointerup', (e) => {
             e.preventDefault();
             btn.classList.remove('pressed');
             sendCmd('S');
-            updateControlInfo('S');
         });
-        
         btn.addEventListener('pointerleave', (e) => {
             btn.classList.remove('pressed');
             sendCmd('S');
-            updateControlInfo('S');
         });
-        
-        // 触摸端额外处理
         btn.addEventListener('touchstart', (e) => {
             e.preventDefault();
             btn.classList.add('pressed');
             sendCmd(btn.dataset.cmd);
         });
-        
         btn.addEventListener('touchend', (e) => {
             e.preventDefault();
             btn.classList.remove('pressed');
             sendCmd('S');
-            updateControlInfo('S');
         });
     });
 </script>
