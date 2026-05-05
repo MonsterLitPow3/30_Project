@@ -312,7 +312,17 @@
                 <button class="clear-canvas-btn" onclick="clearCanvas()">🗑 Clear Path</button>
                 <button class="back-btn" onclick="backToPetMenu()">Back</button>
             </div>
-            <div class="control-info" id="spottingInfo">🎨 Pet is drawing its journey...</div>
+            <div class="control-info" id="spottingInfo">🎨 Use arrow buttons to draw your pet path</div>
+            <!-- 保留控制按键在绘图页 -->
+            <div class="btn-grid" style="margin-top:15px;">
+                <div class="row"><button class="control-btn" data-cmd="F">▲</button></div>
+                <div class="row">
+                    <button class="control-btn" data-cmd="L">◀</button>
+                    <button class="control-btn stop-btn" data-cmd="S">●</button>
+                    <button class="control-btn" data-cmd="R">▶</button>
+                </div>
+                <div class="row"><button class="control-btn" data-cmd="B">▼</button></div>
+            </div>
             <button class="mode-btn disconnect-btn" onclick="disconnectBLE()">Disconnect</button>
         </div>
 
@@ -404,9 +414,6 @@
         ctx.textBaseline = "middle";
         ctx.fillStyle = "#1c1c1e";
         ctx.fillText(currentAnimal, currentX, currentY);
-        
-        // 添加光晕效果
-        ctx.shadowBlur = 0;
     }
     
     function updatePosition(direction) {
@@ -418,12 +425,10 @@
             case 'B': newY += STEP_SIZE; break;  // 下
             case 'L': newX -= STEP_SIZE; break;  // 左
             case 'R': newX += STEP_SIZE; break;  // 右
-            case 'C': break;  // 顺时针 - 位置不变
-            case 'A': break;  // 逆时针 - 位置不变
             default: return false;
         }
         
-        // 边界限制（留出边缘空间）
+        // 边界限制
         newX = Math.min(Math.max(newX, 20), canvasWidth - 20);
         newY = Math.min(Math.max(newY, 20), canvasHeight - 20);
         
@@ -433,10 +438,9 @@
             pathPoints.push({x: currentX, y: currentY});
             drawCanvas();
             
-            // 更新信息显示
             const infoDiv = document.getElementById("spottingInfo");
             if (infoDiv) {
-                infoDiv.innerHTML = `🎨 ${petName} is drawing! Position: (${Math.round(currentX)}, ${Math.round(currentY)}) | Steps: ${pathPoints.length}`;
+                infoDiv.innerHTML = `🎨 ${petName} is drawing! Steps: ${pathPoints.length}`;
             }
             return true;
         }
@@ -449,7 +453,7 @@
         currentY = canvasHeight / 2;
         drawCanvas();
         const infoDiv = document.getElementById("spottingInfo");
-        if (infoDiv) infoDiv.innerHTML = `🎨 Canvas cleared! ${petName} starting fresh...`;
+        if (infoDiv) infoDiv.innerHTML = `🎨 Canvas cleared! Start drawing again...`;
     }
     
     function loadProfile() {
@@ -462,7 +466,6 @@
         document.getElementById("petName").value = petName;
         document.getElementById("petType").value = petType;
         
-        // 高亮选中的动物
         document.querySelectorAll('.animal-btn').forEach(btn => {
             if (btn.dataset.animal === currentAnimal) {
                 btn.classList.add('active');
@@ -508,7 +511,6 @@
             characteristic.startNotifications();
             characteristic.addEventListener('characteristicvaluechanged', (e) => {
                 let val = new TextDecoder().decode(e.target.value);
-                // 接收位置数据（可选）
             });
             document.getElementById('status').innerText = 'Connected';
             document.getElementById('status').style.color = '#007aff';
@@ -542,8 +544,8 @@
         if(!characteristic) return;
         characteristic.writeValue(new TextEncoder().encode(cmd)).catch(err => {});
         
-        // 如果在 Spotting 模式，更新画板位置
-        if (isSpotting && (cmd === 'F' || cmd === 'B' || cmd === 'L' || cmd === 'R')) {
+        // 只有手动方向键才画画
+        if (isSpotting && ['F','B','L','R'].includes(cmd)) {
             updatePosition(cmd);
         }
         
@@ -558,27 +560,21 @@
     }
     
     function enterController() {
-        if (isSpotting) {
-            isSpotting = false;
-            sendCmd('M');
-        }
+        isSpotting = false;
         closeAllPanels();
         document.getElementById('controls').style.display = 'block';
         sendCmd('S');
     }
     
     function enterPetMain() {
-        if (isSpotting) {
-            isSpotting = false;
-            sendCmd('M');
-        }
+        isSpotting = false;
         closeAllPanels();
         document.getElementById('petMainPanel').style.display = 'block';
         sendCmd('S');
     }
     
     function startNBM() {
-        if (isSpotting) isSpotting = false;
+        isSpotting = false;
         closeAllPanels();
         document.getElementById('nbmPanel').style.display = 'block';
         isWandering = true;
@@ -610,15 +606,15 @@
         isSpotting = true;
         isWandering = false;
         
-        // 重置画板位置
+        // 重置画板
         pathPoints = [{x: canvasWidth / 2, y: canvasHeight / 2}];
         currentX = canvasWidth / 2;
         currentY = canvasHeight / 2;
         drawCanvas();
         
-        document.getElementById('spottingInfo').innerHTML = `🎨 ${petName} the ${petType} is drawing its journey!`;
-        sendCmd('S');  // 先停止
-        sendCmd('M');  // 启动漫游模式（使用相同的随机行走逻辑）
+        document.getElementById('spottingInfo').innerHTML = `🎨 Use arrow buttons to control pet and draw path`;
+        // 只停止，不开启自动漫游
+        sendCmd('S');
     }
     
     function backToPetMenu() {
@@ -648,7 +644,7 @@
         });
     });
     
-    // 控制按钮
+    // 控制按钮全局绑定
     document.querySelectorAll('.control-btn').forEach(btn => {
         btn.addEventListener('contextmenu', (e) => e.preventDefault());
         btn.addEventListener('dragstart', (e) => e.preventDefault());
