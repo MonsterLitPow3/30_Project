@@ -259,7 +259,6 @@
             <button class="mode-btn disconnect-btn" onclick="disconnectBLE()">🔌 Disconnect</button>
         </div>
 
-        <!-- 手动控制 -->
         <div class="control-panel" id="controls">
             <div class="control-info" id="controlInfo">🎮 Ready to control</div>
             <div class="btn-grid">
@@ -279,7 +278,6 @@
             <button class="mode-btn disconnect-btn" onclick="disconnectBLE()">Disconnect</button>
         </div>
 
-        <!-- Pet Mode 二级菜单 -->
         <div class="pet-main-panel" id="petMainPanel">
             <button class="mode-btn" onclick="startNBM()">🌿 Natural Behaviour Mode</button>
             <button class="mode-btn" onclick="startSpotting()">🎨 Spotting Mode (Draw)</button>
@@ -287,7 +285,6 @@
             <button class="mode-btn disconnect-btn" onclick="disconnectBLE()">Disconnect</button>
         </div>
 
-        <!-- Natural Behaviour 运行界面 -->
         <div class="nbm-active-panel" id="nbmPanel">
             <div class="status-text" id="wanderingText">Your pet is wandering...</div>
             <button class="mode-btn" id="toggleBtn" onclick="toggleWander()">🛑 Stop Wandering</button>
@@ -295,7 +292,6 @@
             <button class="mode-btn disconnect-btn" onclick="disconnectBLE()">Disconnect</button>
         </div>
 
-        <!-- Spotting Mode 绘图界面 -->
         <div class="spotting-panel" id="spottingPanel">
             <div class="animal-select">
                 <button class="animal-btn" data-animal="🐶">🐶</button>
@@ -313,7 +309,6 @@
                 <button class="back-btn" onclick="backToPetMenu()">Back</button>
             </div>
             <div class="control-info" id="spottingInfo">🎨 Use arrow buttons to draw your pet path</div>
-            <!-- 保留控制按键在绘图页 -->
             <div class="btn-grid" style="margin-top:15px;">
                 <div class="row"><button class="control-btn" data-cmd="F">▲</button></div>
                 <div class="row">
@@ -326,7 +321,6 @@
             <button class="mode-btn disconnect-btn" onclick="disconnectBLE()">Disconnect</button>
         </div>
 
-        <!-- 宠物设置页面 -->
         <div class="setup-panel" id="setupPanel">
             <div class="setup-title">Pet Profile</div>
             <div class="input-group">
@@ -353,20 +347,17 @@
     let isSpotting = false;
     let currentDirection = "";
     
-    // 画板相关
     let canvas, ctx;
     let canvasWidth = 350, canvasHeight = 350;
     let currentX = canvasWidth / 2, currentY = canvasHeight / 2;
     let currentAnimal = "🐶";
     let pathPoints = [{x: currentX, y: currentY}];
     
-    // 方向映射
     const directionMap = {
         'F': 'Forward', 'B': 'Backward', 'L': 'Left', 'R': 'Right',
         'C': 'Clockwise', 'A': 'Anti-clockwise', 'S': 'Stopped'
     };
     
-    // 移动步长（像素）
     const STEP_SIZE = 8;
 
     function initCanvas() {
@@ -381,7 +372,6 @@
         if (!ctx) return;
         ctx.clearRect(0, 0, canvasWidth, canvasHeight);
         
-        // 绘制网格背景
         ctx.strokeStyle = "#e0e0e0";
         ctx.lineWidth = 0.5;
         for (let i = 0; i < canvasWidth; i += 25) {
@@ -395,7 +385,6 @@
             ctx.stroke();
         }
         
-        // 绘制走过的路径
         if (pathPoints.length > 1) {
             ctx.beginPath();
             ctx.strokeStyle = "#007aff";
@@ -408,7 +397,6 @@
             ctx.stroke();
         }
         
-        // 绘制动物头像（当前位置）
         ctx.font = `${Math.floor(canvasWidth / 6)}px "Segoe UI Emoji"`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
@@ -421,14 +409,13 @@
         let newY = currentY;
         
         switch(direction) {
-            case 'F': newY -= STEP_SIZE; break;  // 上
-            case 'B': newY += STEP_SIZE; break;  // 下
-            case 'L': newX -= STEP_SIZE; break;  // 左
-            case 'R': newX += STEP_SIZE; break;  // 右
+            case 'F': newY -= STEP_SIZE; break;  
+            case 'B': newY += STEP_SIZE; break;  
+            case 'L': newX -= STEP_SIZE; break;  
+            case 'R': newX += STEP_SIZE; break;  
             default: return false;
         }
         
-        // 边界限制
         newX = Math.min(Math.max(newX, 20), canvasWidth - 20);
         newY = Math.min(Math.max(newY, 20), canvasHeight - 20);
         
@@ -544,7 +531,6 @@
         if(!characteristic) return;
         characteristic.writeValue(new TextEncoder().encode(cmd)).catch(err => {});
         
-        // 只有手动方向键才画画
         if (isSpotting && ['F','B','L','R'].includes(cmd)) {
             updatePosition(cmd);
         }
@@ -606,14 +592,12 @@
         isSpotting = true;
         isWandering = false;
         
-        // 重置画板
         pathPoints = [{x: canvasWidth / 2, y: canvasHeight / 2}];
         currentX = canvasWidth / 2;
         currentY = canvasHeight / 2;
         drawCanvas();
         
         document.getElementById('spottingInfo').innerHTML = `🎨 Use arrow buttons to control pet and draw path`;
-        // 只停止，不开启自动漫游
         sendCmd('S');
     }
     
@@ -633,7 +617,6 @@
         document.getElementById("modeSelect").style.display = "block";
     }
     
-    // 动物选择
     document.querySelectorAll('.animal-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             currentAnimal = btn.dataset.animal;
@@ -644,7 +627,6 @@
         });
     });
     
-    // 控制按钮全局绑定
     document.querySelectorAll('.control-btn').forEach(btn => {
         btn.addEventListener('contextmenu', (e) => e.preventDefault());
         btn.addEventListener('dragstart', (e) => e.preventDefault());
